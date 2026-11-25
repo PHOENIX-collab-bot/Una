@@ -1,0 +1,22 @@
+# Secrets & environment
+.env
+.env.*
+!.env.example
+
+# Runtime memory & cache
+data/
+memory.json
+seen_deals.json
+latest_deals.json
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
