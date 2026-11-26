@@ -14,7 +14,7 @@ import tempfile
 import time
 import wave
 import xml.etree.ElementTree as ET
-from collections import defaultdict
+from collections import OrderedDict, defaultdict, deque
 from email.mime.text import MIMEText
 from pathlib import Path
 from urllib.parse import urlparse
@@ -80,44 +80,118 @@ RESIDENT_MEMORY_LIMIT = 12
 AUTO_RECALL_LIMIT = 6
 backfill_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
-# 多模态识图与语音听觉限制（防止单条大附件撑爆 1G 内存或超出 API 8MiB 限制）
+# 多模态识图、语音听觉与防空转烧 Token 熔断保护配置
 MAX_IMAGES_PER_MSG = 3
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_VOICES_PER_MSG = 2
 MAX_AUDIO_BYTES = 8 * 1024 * 1024
 
+API_MAX_CALLS_PER_MIN = max(5, int(os.getenv("API_MAX_CALLS_PER_MIN", "20")))
+API_MAX_CALLS_PER_DAY = max(50, int(os.getenv("API_MAX_CALLS_PER_DAY", "300")))
+API_ERR_BREAKER_THRESHOLD = 5
+API_ERR_BREAKER_COOLDOWN_SEC = 120
+LLM_MAX_TOKENS = 1200
+
+# 使用外部有界字典缓存原始附件与已处理 msg_id（彻底兼容 __slots__ 类，杜绝 AttributeError 与重连重放）
+RAW_ATTACHMENTS_CACHE: OrderedDict[str, list] = OrderedDict()
+SEEN_MSG_IDS: OrderedDict[str, float] = OrderedDict()
+
+
+class ApiGuardBlocked(RuntimeError):
+    """触发频控或异常熔断时抛出，阻止继续请求外部付费 API"""
+
+
+class ApiSafetyGuard:
+    """防空转烧 Token 保护：分钟/日频控 + 连续报错熔断"""
+
+    def __init__(self):
+        self.minute_calls: deque[float] = deque()
+        self.day_calls: deque[float] = deque()
+        self.consecutive_errors: int = 0
+        self.circuit_open_until: float = 0.0
+
+    def check_allowed(self, kind: str = "LLM") -> tuple[bool, str]:
+        now = time.time()
+        if now < self.circuit_open_until:
+            wait_sec = int(self.circuit_open_until - now) + 1
+            return False, f"连续报错触发熔断保护，冷静期还剩 {wait_sec} 秒"
+
+        while self.minute_calls and now - self.minute_calls[0] > 60:
+            self.minute_calls.popleft()
+        while self.day_calls and now - self.day_calls[0] > 86400:
+            self.day_calls.popleft()
+
+        if len(self.minute_calls) >= API_MAX_CALLS_PER_MIN:
+            print(f"[API GUARD] 触发每分钟上限（{API_MAX_CALLS_PER_MIN} 次/分），已拦截 {kind} 请求")
+            return False, f"1 分钟内调用已达上限（{API_MAX_CALLS_PER_MIN} 次），防止异常空转"
+
+        if len(self.day_calls) >= API_MAX_CALLS_PER_DAY:
+            print(f"[API GUARD] 触发每日上限（{API_MAX_CALLS_PER_DAY} 次/天），已拦截 {kind} 请求")
+            return False, f"今日 API 调用已达安全上限（{API_MAX_CALLS_PER_DAY} 次）"
+
+        self.minute_calls.append(now)
+        self.day_calls.append(now)
+        return True, ""
+
+    def record_success(self):
+        self.consecutive_errors = 0
+
+    def record_error(self, err: Exception):
+        self.consecutive_errors += 1
+        if self.consecutive_errors >= API_ERR_BREAKER_THRESHOLD:
+            self.circuit_open_until = time.time() + API_ERR_BREAKER_COOLDOWN_SEC
+            self.consecutive_errors = 0
+            print(
+                f"[CIRCUIT OPEN] 连续报错 {API_ERR_BREAKER_THRESHOLD} 次（最近一次：{err}），"
+                f"已自动熔断 {API_ERR_BREAKER_COOLDOWN_SEC} 秒防止空转烧 Token！"
+            )
+
+
+api_guard = ApiSafetyGuard()
+
+
+async def safe_chat_completion(**kwargs):
+    """统一出口：所有大模型调用必须经过频控、熔断与 max_tokens 上限保护"""
+    ok, reason = api_guard.check_allowed("LLM")
+    if not ok:
+        raise ApiGuardBlocked(reason)
+    kwargs.setdefault("max_tokens", LLM_MAX_TOKENS)
+    kwargs.setdefault("timeout", 45)
+    try:
+        resp = await llm_client.chat.completions.create(**kwargs)
+        api_guard.record_success()
+        return resp
+    except Exception as e:
+        api_guard.record_error(e)
+        raise
+
 
 def patch_botpy_voice_attachments():
-    """兼容补丁：保留 QQ 开放平台 C2C 语音附件中的 voice_wav_url / asr_refer_text 原始字段"""
-    att_cls = getattr(C2CMessage, "_Attachments", None)
-    if att_cls is not None and not getattr(att_cls, "_una_voice_patched", False):
-        orig_att_init = att_cls.__init__
+    """兼容补丁：安全缓存 QQ 开放平台 C2C 原始附件（不向 __slots__ 对象写新属性，绝不触发 AttributeError）"""
+    if getattr(C2CMessage, "_una_msg_patched", False):
+        return
+    orig_msg_init = C2CMessage.__init__
 
-        def _patched_att_init(self, data, *args, **kwargs):
-            orig_att_init(self, data, *args, **kwargs)
-            if isinstance(data, dict):
-                self.voice_wav_url = data.get("voice_wav_url")
-                self.asr_refer_text = data.get("asr_refer_text")
-                self.raw_data = data
-
-        att_cls.__init__ = _patched_att_init
-        att_cls._una_voice_patched = True
-
-    if not getattr(C2CMessage, "_una_msg_patched", False):
-        orig_msg_init = C2CMessage.__init__
-
-        def _patched_msg_init(self, *args, **kwargs):
-            orig_msg_init(self, *args, **kwargs)
-            raw_atts = None
+    def _patched_msg_init(self, *args, **kwargs):
+        orig_msg_init(self, *args, **kwargs)
+        try:
+            payload = None
             for candidate in list(args) + list(kwargs.values()):
                 if isinstance(candidate, dict) and "attachments" in candidate:
-                    raw_atts = candidate.get("attachments")
+                    payload = candidate
                     break
-            if isinstance(raw_atts, list):
-                self._una_raw_attachments = raw_atts
+            if payload is not None:
+                raw_atts = payload.get("attachments")
+                msg_id = str(getattr(self, "id", "") or payload.get("id") or "")
+                if msg_id and isinstance(raw_atts, list) and raw_atts:
+                    RAW_ATTACHMENTS_CACHE[msg_id] = raw_atts
+                    while len(RAW_ATTACHMENTS_CACHE) > 100:
+                        RAW_ATTACHMENTS_CACHE.popitem(last=False)
+        except Exception as e:
+            print(f"[VOICE PATCH WARN] 缓存原始附件失败（已安全忽略）：{e}")
 
-        C2CMessage.__init__ = _patched_msg_init
-        C2CMessage._una_msg_patched = True
+    C2CMessage.__init__ = _patched_msg_init
+    C2CMessage._una_msg_patched = True
 
 
 patch_botpy_voice_attachments()
@@ -298,9 +372,9 @@ def _get_field(obj, key: str, default=""):
 
 
 def get_message_attachments(message: C2CMessage) -> list:
-    raw_atts = getattr(message, "_una_raw_attachments", None)
-    if isinstance(raw_atts, list) and raw_atts:
-        return raw_atts
+    msg_id = str(getattr(message, "id", "") or "")
+    if msg_id and msg_id in RAW_ATTACHMENTS_CACHE:
+        return RAW_ATTACHMENTS_CACHE[msg_id]
     return getattr(message, "attachments", None) or []
 
 
@@ -500,17 +574,28 @@ async def transcribe_audio_deepseek(
     """调用 DeepSeek 官方工具 API（POST /v1/tools/asr）将音频转写为文字"""
     if not ASR_API_KEY:
         return ""
-    r = await client.post(
-        ASR_API_URL,
-        headers={"Authorization": f"Bearer {ASR_API_KEY}"},
-        files={"file": (filename, audio_bytes, mime_type)},
-    )
-    r.raise_for_status()
-    data = r.json()
+    ok, reason = api_guard.check_allowed("ASR")
+    if not ok:
+        print(f"[VOICE:ASR GUARD] {reason}")
+        return ""
+    try:
+        r = await client.post(
+            ASR_API_URL,
+            headers={"Authorization": f"Bearer {ASR_API_KEY}"},
+            files={"file": (filename, audio_bytes, mime_type)},
+        )
+        r.raise_for_status()
+        data = r.json()
+        api_guard.record_success()
+    except Exception as e:
+        api_guard.record_error(e)
+        raise
     text = (data.get("text") or "").strip()
     duration_ms = int(data.get("duration_ms") or 0)
     if text:
         print(f"[VOICE:DeepSeekASR] 识别成功（{duration_ms / 1000:.1f}s）：{text}")
+    else:
+        print(f"[VOICE:DeepSeekASR] 音频无明确人声内容（{duration_ms / 1000:.1f}s，可能为纯音乐或静音）")
     return text
 
 
@@ -1022,10 +1107,11 @@ category 只能从以下选项选：约定与羁绊、情绪与心事、目标�
 {convo_text}"""
 
         try:
-            resp = await llm_client.chat.completions.create(
+            resp = await safe_chat_completion(
                 model=LLM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
+                max_tokens=600,
             )
             raw = (resp.choices[0].message.content or "").strip()
             raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I | re.S).strip()
@@ -1135,22 +1221,26 @@ async def chat_with_companion(
     # 最多允许 2 次工具轮 + 1 次最终收口轮，每轮均持续传入 tools，防止 DeepSeek 泄漏 DSML 原始标签
     for step in range(3):
         try:
-            resp = await llm_client.chat.completions.create(
+            resp = await safe_chat_completion(
                 model=LLM_MODEL,
                 messages=messages,
                 temperature=0.9 if step == 0 else 0.75,
                 tools=BOT_TOOLS,
                 tool_choice="auto",
             )
+        except ApiGuardBlocked:
+            raise
         except Exception as e:
             if step == 0:
                 print(f"[TOOLS FALLBACK] {e}")
                 try:
-                    resp = await llm_client.chat.completions.create(
+                    resp = await safe_chat_completion(
                         model=LLM_MODEL,
                         messages=base_messages,
                         temperature=0.9,
                     )
+                except ApiGuardBlocked:
+                    raise
                 except Exception as e2:
                     if image_data_urls:
                         print(f"[VISION FALLBACK] 当前模型接口暂未接受图片输入：{e2}")
@@ -1165,7 +1255,7 @@ async def chat_with_companion(
                                 ).strip(),
                             }
                         )
-                        resp = await llm_client.chat.completions.create(
+                        resp = await safe_chat_completion(
                             model=LLM_MODEL,
                             messages=fallback_messages,
                             temperature=0.85,
@@ -1259,14 +1349,16 @@ async def chat_with_companion(
         synth_content = build_user_message_content(synth_text, image_data_urls, is_voice=is_voice)
         synth_messages.append({"role": "user", "content": synth_content})
         try:
-            synth_resp = await llm_client.chat.completions.create(
+            synth_resp = await safe_chat_completion(
                 model=LLM_MODEL,
                 messages=synth_messages,
                 temperature=0.75,
             )
+        except ApiGuardBlocked:
+            raise
         except Exception:
             synth_messages[-1] = {"role": "user", "content": synth_text}
-            synth_resp = await llm_client.chat.completions.create(
+            synth_resp = await safe_chat_completion(
                 model=LLM_MODEL,
                 messages=synth_messages,
                 temperature=0.75,
@@ -1297,7 +1389,7 @@ async def force_search_and_answer(user_id: str, query: str) -> str:
         f"请保持「{BOT_NAME}」自称与温柔敬语底色，称呼对方为「{USER_NICKNAME}」或“你”（不要叫宝贝），"
         f"自然清晰地把重点讲给{USER_NICKNAME}听（不要用 ** 或 ### 等 Markdown 符号，也不要输出网址）。"
     )
-    resp = await llm_client.chat.completions.create(
+    resp = await safe_chat_completion(
         model=LLM_MODEL,
         messages=[
             {"role": "system", "content": build_companion_system_prompt(user_id)},
@@ -1327,7 +1419,7 @@ async def force_read_and_answer(user_id: str, full_text: str) -> str:
         f"请保持「{BOT_NAME}」自称与温柔自然的口吻讲给{USER_NICKNAME}听，{task_hint}"
         f"（称呼对方为「{USER_NICKNAME}」或“你”，不要用 ** 或 ### 等 Markdown 符号，也不要输出网址）。"
     )
-    resp = await llm_client.chat.completions.create(
+    resp = await safe_chat_completion(
         model=LLM_MODEL,
         messages=[
             {"role": "system", "content": build_companion_system_prompt(user_id)},
@@ -1421,7 +1513,7 @@ async def summarize_deals_with_persona(deals: list[dict]) -> str:
         f"挑出真正值得留意的（AI 会员、免费 Token、黑五特价、高性价比 VPS 等），自然说清亮点，过滤掉纯水帖。"
         f"不要用 ** 或 ### 等 Markdown 符号，也不要输出任何网址：\n\n{raw}"
     )
-    resp = await llm_client.chat.completions.create(
+    resp = await safe_chat_completion(
         model=LLM_MODEL,
         messages=[
             {
@@ -1434,6 +1526,7 @@ async def summarize_deals_with_persona(deals: list[dict]) -> str:
             {"role": "user", "content": prompt},
         ],
         temperature=0.65,
+        max_tokens=900,
     )
     return strip_dsml(
         (resp.choices[0].message.content or f"这一轮暂时没看到特别划算的消息呢，{BOT_NAME}会继续替{USER_NICKNAME}留意的。").strip()
@@ -1572,8 +1665,8 @@ class CompanionBotClient(botpy.Client):
 
         if not text and failed_voices > 0:
             return (
-                f"{USER_NICKNAME}，{BOT_NAME}收到你的语音啦，不过刚才那段语音信号有点模糊没能听清，"
-                f"可以再发一次或者打几个字告诉{BOT_NAME}吗？"
+                f"{USER_NICKNAME}，{BOT_NAME}收到你的语音啦，不过刚才那段语音里没有听清说话声"
+                f"（如果是纯音乐前奏、环境音或信号波动，{BOT_NAME}暂时只能听懂人声哦），可以对着麦克风再对{BOT_NAME}说一次吗？"
             )
 
         if not text and failed_images > 0:
@@ -1695,6 +1788,15 @@ class CompanionBotClient(botpy.Client):
 
     async def on_c2c_message_create(self, message: C2CMessage):
         uid = message.author.user_openid
+        msg_id = str(getattr(message, "id", "") or "")
+        if msg_id:
+            if msg_id in SEEN_MSG_IDS:
+                print(f"[DEDUP] 跳过重复投递的消息 msg_id={msg_id}")
+                return
+            SEEN_MSG_IDS[msg_id] = time.time()
+            while len(SEEN_MSG_IDS) > 500:
+                SEEN_MSG_IDS.popitem(last=False)
+
         try:
             image_data_urls, failed_images = await extract_image_data_urls(message)
             voice_transcripts, failed_voices = await extract_voice_transcripts(message)
@@ -1706,8 +1808,14 @@ class CompanionBotClient(botpy.Client):
                 voice_transcripts=voice_transcripts,
                 failed_voices=failed_voices,
             )
+        except ApiGuardBlocked as e:
+            reply = f"{USER_NICKNAME}，{BOT_NAME}刚刚触发了防空转保护（{e}），稍等一会再叫{BOT_NAME}好不好？"
         except Exception as e:
             reply = f"抱歉，{USER_NICKNAME}……{BOT_NAME}刚刚好像有点恍神了（{e}），可以再对{BOT_NAME}说一遍吗？"
+        finally:
+            if msg_id:
+                RAW_ATTACHMENTS_CACHE.pop(msg_id, None)
+
         await message._api.post_c2c_message(
             openid=uid,
             msg_type=0,
