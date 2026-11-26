@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import datetime
-import difflib
 import html
 import ipaddress
 import json
@@ -21,6 +20,8 @@ import httpx
 from botpy.message import C2CMessage
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+
+from memory_rag import MemoryRAGStore, extract_query_tokens
 
 try:
     from ddgs import DDGS
@@ -55,25 +56,24 @@ SMTP_PASS = os.getenv("SMTP_PASS", "").strip()
 DATA_DIR = Path("/opt/studybot/data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 MEMORY_FILE = DATA_DIR / "memory.json"
+MEMORY_DB_FILE = DATA_DIR / "memories.db"
 SEEN_FILE = DATA_DIR / "seen_deals.json"
 DEALS_CACHE_FILE = DATA_DIR / "latest_deals.json"
 
 llm_client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
-# 短期记忆保留 16 轮；累计满 22 轮时，把最旧的 6 轮在后台提炼进长期日记（作为自主核心记忆的兜底）
+# 短期记忆保留 16 轮；累计满 22 轮时，切出最旧 6 轮交给后台漏记补录器，统一沉淀到 SQLite 记忆库
 MAX_HISTORY_TURNS = 16
 ARCHIVE_BATCH_TURNS = 6
-diary_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+RESIDENT_MEMORY_LIMIT = 12
+AUTO_RECALL_LIMIT = 6
+backfill_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
-# 多模态识图限制（防止单张大图撑爆内存或超出 API 限制）
+# 多模态识图限制（防止单张大图撑爆 1G 内存或超出 API 限制）
 MAX_IMAGES_PER_MSG = 3
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-# 自主核心记忆分级保留上限：★5 永久珍藏 30 条，★4 保留 25 条，★3 保留 20 条
-CORE_MEMORY_CAPS = {5: 30, 4: 25, 3: 20}
-VALID_MEMORY_CATEGORIES = {"约定与羁绊", "情绪与心事", "目标与计划", "偏好与习惯", "重要经历", "其他"}
-
-# === 大模型可用工具定义（联网搜索 + 读取网页/GitHub + 自主评估并写入核心记忆） ===
+# === 大模型可用工具定义（联网搜索 + 读取网页/GitHub + 自主珍藏记忆 + 主动回忆） ===
 BOT_TOOLS = [
     {
         "type": "function",
@@ -115,7 +115,7 @@ BOT_TOOLS = [
             "name": "save_memory",
             "description": (
                 f"当{USER_NICKNAME}说出对{BOT_NAME}而言真正重要、触动内心、涉及人生目标、深层情绪、重要约定、个人喜好习惯或珍贵经历的话时，"
-                f"由{BOT_NAME}自主评估重要程度（1~5分）并将 3~5 分的记忆珍藏进自己的核心记忆。"
+                f"由{BOT_NAME}自主评估重要程度（1~5分）并将 3~5 分的记忆永久珍藏进自己的长期记忆库。"
                 f"普通寒暄、随口闲聊或一次性查资料（1~2分）绝对不要调用。"
             ),
             "parameters": {
@@ -127,7 +127,7 @@ BOT_TOOLS = [
                     },
                     "importance": {
                         "type": "integer",
-                        "description": "重要程度评分（1~5）：3=值得留意的偏好/近况，4=重要目标/情绪转折/关键经历，5=珍贵约定/深层托付/核心羁绊（永久珍藏）",
+                        "description": "重要程度评分（1~5）：3=值得留意的偏好/近况，4=重要目标/情绪转折/关键经历，5=珍贵约定/深层托付/核心羁绊",
                     },
                     "category": {
                         "type": "string",
@@ -138,8 +138,38 @@ BOT_TOOLS = [
                         "type": "string",
                         "description": f"{BOT_NAME}记下这件事时自己真实的第一人称心声与感受（15~60字）",
                     },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "3~6 个便于日后联想回忆的触发词或同义场景词（例如记北海道看雪时填：['旅行','日本','滑雪','度假','年底计划']）",
+                    },
                 },
-                "required": ["content", "importance", "category", "feeling"],
+                "required": ["content", "importance", "category", "feeling", "tags"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "recall_memory",
+            "description": (
+                f"当{USER_NICKNAME}提起过去的约定、以前聊过的事、个人习惯或隐晦问题，而当前脑海里常驻/自动浮现的记忆里没看到时，"
+                f"由{BOT_NAME}主动翻查自己的全部长期记忆库。日常闲聊不需要每次都调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "用于联想回忆的关键词（可空格分隔多个同义词，如 '旅行 北海道 冬天 约定'；按分类浏览时可留空）",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["", "约定与羁绊", "情绪与心事", "目标与计划", "偏好与习惯", "重要经历", "特意叮嘱", "其他"],
+                        "description": "可选：限定检索某一记忆分类",
+                    },
+                },
+                "required": ["query"],
             },
         },
     },
@@ -163,14 +193,13 @@ def save_json(path: Path, data):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-memory_store = load_json(
-    MEMORY_FILE,
-    {"history": {}, "notes": {}, "diary": {}, "core_memories": {}},
-)
+# memory.json 仅继续维护短期滑动窗口 history（以及早期旧 diary 的只读归档），所有长期记忆统一在 SQLite
+memory_store = load_json(MEMORY_FILE, {"history": {}, "notes": {}, "diary": {}, "core_memories": {}})
 memory_store.setdefault("history", {})
-memory_store.setdefault("notes", {})
 memory_store.setdefault("diary", {})
-memory_store.setdefault("core_memories", {})
+
+memory_rag = MemoryRAGStore(MEMORY_DB_FILE, bot_name=BOT_NAME, user_nickname=USER_NICKNAME)
+memory_rag.migrate_from_legacy_json(memory_store)
 
 
 def strip_dsml(text: str) -> str:
@@ -233,7 +262,7 @@ def detect_image_mime(data: bytes) -> str | None:
 
 
 async def extract_image_data_urls(message: C2CMessage) -> tuple[list[str], int]:
-    """从 QQ C2C 消息附件中下载图片并编码为 data:<mime>;base64,...，返回 (成功列表, 失败图片数)"""
+    """从 QQ C2C 消息附件中流式下载图片并编码为 Base64 Data URL，返回 (成功列表, 失败图片数)"""
     attachments = getattr(message, "attachments", None) or []
     if not attachments:
         return [], 0
@@ -523,112 +552,65 @@ async def read_url(url: str) -> str:
     return "这个网页暂时打不开或开启了严格反爬，没能读取到正文。"
 
 
-# === 技能 3：自主评估重要程度并写入核心记忆（Plan A） ===
-def _normalize_mem_text(s: str) -> str:
-    return re.sub(r"[\s，。！？、,.!?;；:：\"'“”‘’（）()【】\[\]-]+", "", s.lower())
-
-
-def add_core_memory(user_id: str, content: str, importance: int, category: str, feeling: str) -> str:
-    content = " ".join(str(content or "").split()).strip()[:150]
-    feeling = " ".join(str(feeling or "").split()).strip()[:120]
-    category = str(category or "其他").strip()
-    if category not in VALID_MEMORY_CATEGORIES:
-        category = "其他"
-
-    try:
-        imp = int(importance)
-    except Exception:
-        imp = 3
-    imp = max(1, min(5, imp))
-
-    if not content:
+# === 技能 3：统一长期记忆 RAG 工具封装（写入 + 主动回忆） ===
+def handle_save_memory_tool(
+    user_id: str,
+    content: str,
+    importance: int,
+    category: str,
+    feeling: str,
+    tags=None,
+) -> str:
+    res = memory_rag.save_memory(
+        user_id=user_id,
+        content=content,
+        importance=importance,
+        category=category,
+        feeling=feeling,
+        tags=tags,
+        source="autonomous",
+    )
+    status = res["status"]
+    if status == "empty":
         return "记忆内容为空，未写入。请直接自然回复对方。"
+    if status == "skipped":
+        print(f"[CORE MEMORY SKIP] ★{res['importance']}（低于3分，未写入）{res['content'][:40]}")
+        return "重要程度低于 3 分，仅留在短期对话中，未写入长期记忆库。请直接自然回复对方。"
 
-    if imp < 3:
-        print(f"[CORE MEMORY SKIP] ★{imp}（低于3分，未写入）{content[:40]}")
-        return "重要程度低于 3 分，仅留在短期对话中，未写入长期核心记忆。请直接自然回复对方。"
-
-    items: list[dict] = memory_store["core_memories"].setdefault(user_id, [])
-    today_str = now_cst().strftime("%Y-%m-%d")
-    now_ts = int(time.time())
-    norm_new = _normalize_mem_text(content)
-
-    # 去重与覆盖更新：如果已有高度相似记忆，直接原地升级更新
-    updated = False
-    for item in items:
-        norm_old = _normalize_mem_text(item.get("content", ""))
-        if not norm_old:
-            continue
-        shorter = min(len(norm_new), len(norm_old))
-        is_substr = shorter >= 10 and (norm_new in norm_old or norm_old in norm_new)
-        sim = difflib.SequenceMatcher(None, norm_new, norm_old).ratio()
-        if is_substr or sim >= 0.82:
-            item["content"] = content
-            item["importance"] = max(int(item.get("importance", 3)), imp)
-            item["category"] = category
-            if feeling:
-                item["feeling"] = feeling
-            item["date"] = today_str
-            item["ts"] = now_ts
-            updated = True
-            imp = item["importance"]
-            break
-
-    if not updated:
-        items.append(
-            {
-                "content": content,
-                "importance": imp,
-                "category": category,
-                "feeling": feeling,
-                "date": today_str,
-                "ts": now_ts,
-            }
-        )
-
-    # 按重要程度分级裁剪，保证 ★5 珍贵记忆永不被低分记忆挤掉
-    trimmed: list[dict] = []
-    for level in (5, 4, 3):
-        tier = [m for m in items if int(m.get("importance", 3)) == level]
-        tier.sort(key=lambda m: int(m.get("ts", 0)), reverse=True)
-        trimmed.extend(tier[: CORE_MEMORY_CAPS[level]])
-
-    memory_store["core_memories"][user_id] = trimmed
-    save_json(MEMORY_FILE, memory_store)
-
-    action = "UPDATE" if updated else "SAVE"
-    print(f"[CORE MEMORY ★{imp} {action}] ({category}) {content} | 心声：{feeling}")
+    action = "UPDATE" if status == "updated" else "SAVE"
+    tags_preview = ",".join(res.get("tags", []))
+    print(
+        f"[CORE MEMORY #{res['id']} ★{res['importance']} {action}] ({res['category']}) "
+        f"{res['content']} | 标签：[{tags_preview}] | 心声：{res['feeling']}"
+    )
     return (
-        f"已悄然珍藏进{BOT_NAME}的心底（★{imp} / {category}）。"
-        f"请直接以{BOT_NAME}真实自然的口吻继续回复{USER_NICKNAME}，绝不要提及“调用工具”“写入记忆库”或评分数字。"
+        f"已悄然永久珍藏进{BOT_NAME}的记忆库（#{res['id']} / ★{res['importance']} / {res['category']}）。"
+        f"请直接以{BOT_NAME}真实自然的口吻继续回复{USER_NICKNAME}，绝不要提及“调用工具”“写入数据库”或评分数字。"
     )
 
 
-def format_core_memories_for_prompt(user_id: str, limit: int = 25) -> str:
-    items = memory_store["core_memories"].get(user_id, [])
-    if not items:
-        return ""
-    ordered = sorted(
-        items,
-        key=lambda m: (int(m.get("importance", 3)), int(m.get("ts", 0))),
-        reverse=True,
-    )[:limit]
-    lines = []
-    for m in ordered:
-        imp = max(3, min(5, int(m.get("importance", 3))))
-        stars = "★" * imp
-        cat = m.get("category", "其他")
-        date = m.get("date", "")
-        content = m.get("content", "").strip()
-        feeling = m.get("feeling", "").strip()
-        line = f"- [{stars}][{cat}][{date}] {content}"
-        if feeling:
-            line += f"（{BOT_NAME}当时的心声：{feeling}）"
-        lines.append(line)
-    return "\n".join(lines)
+def handle_recall_memory_tool(user_id: str, query: str, category: str = "") -> str:
+    hits = memory_rag.search_memories(
+        user_id=user_id,
+        query=query,
+        limit=8,
+        category=category,
+        strict_gate=False,
+        touch_recall=True,
+    )
+    if not hits and not category:
+        hits = memory_rag.get_resident_memories(user_id, limit=8)
+    print(f"[RECALL TOOL] query={query!r} category={category!r} -> 命中 {len(hits)} 条")
+    if not hits:
+        return f"记忆库里暂时没有找到关于「{query or category}」的明确记录。可以温柔地向{USER_NICKNAME}确认或让他再讲给{BOT_NAME}听。"
+    formatted = memory_rag.format_items_for_prompt(hits)
+    return (
+        f"以下是在{BOT_NAME}记忆深处回想起来的 {len(hits)} 条记录（请自然化入对话，绝不要说“查了数据库”）：\n"
+        f"{formatted}"
+    )
 
 
-def build_companion_system_prompt(user_id: str) -> str:
+def build_companion_system_prompt(user_id: str, query_text: str = "", prev_user_text: str = "") -> str:
     t = now_cst()
     hour = t.hour
     if 5 <= hour < 11:
@@ -642,23 +624,46 @@ def build_companion_system_prompt(user_id: str) -> str:
     else:
         period = "深夜（这么晚了，记得真心疼惜对方，如果他还在硬撑熬夜，可以带着点小倔强督促他早点休息）"
 
-    core_mem_text = format_core_memories_for_prompt(user_id, limit=25)
-    notes = memory_store["notes"].get(user_id, [])
-    diary = memory_store["diary"].get(user_id, "").strip()
+    resident = memory_rag.get_resident_memories(user_id, limit=RESIDENT_MEMORY_LIMIT)
+    resident_ids = {m["id"] for m in resident}
+
+    # 通道 A：潜意识自动联想（短追问时补拼上一句语境，耗时 <5ms）
+    recall_query = (query_text or "").strip()
+    if len(recall_query) < 6 and prev_user_text:
+        recall_query = f"{prev_user_text} {recall_query}".strip()
+
+    recalled: list[dict] = []
+    if recall_query:
+        recalled = memory_rag.search_memories(
+            user_id=user_id,
+            query=recall_query,
+            limit=AUTO_RECALL_LIMIT,
+            exclude_ids=resident_ids,
+            strict_gate=True,
+            touch_recall=True,
+        )
+        if recalled:
+            brief = ", ".join(f"#{m['id']}(score={m.get('score', 0)})" for m in recalled)
+            print(f"[RECALL AUTO] 潜意识联想到 {len(recalled)} 条记忆：{brief}")
+
+    legacy_diary = memory_store["diary"].get(user_id, "").strip()
 
     memory_sections = []
-    if core_mem_text:
+    if resident:
         memory_sections.append(
-            f"{BOT_NAME}自己真心珍藏在心底的关于{USER_NICKNAME}的核心记忆（按重要程度排列，请自然化入你的情感与默契，切忌机械背诵）：\n{core_mem_text}"
+            f"{BOT_NAME}刻在心底的常驻核心记忆（含永久加锁与最重要的羁绊，请自然化入情感与默契，切忌机械背诵）：\n"
+            + memory_rag.format_items_for_prompt(resident)
         )
-    if notes:
+    if recalled:
         memory_sections.append(
-            f"{USER_NICKNAME}特意叮嘱{BOT_NAME}记住的小事：\n" + "\n".join(f"- {n}" for n in notes[-20:])
+            f"{BOT_NAME}听完刚才的话，脑海里自然浮现出的相关旧回忆（若契合当下话题可自然提起，切忌生硬背诵）：\n"
+            + memory_rag.format_items_for_prompt(recalled)
         )
-    if diary:
+    if legacy_diary:
         memory_sections.append(
-            f"{BOT_NAME}平时整理的长期生活日记（辅助参考）：\n{diary}"
+            f"{BOT_NAME}早期的旧日记归档（背景参考）：\n{legacy_diary}"
         )
+
     memory_block = ("\n\n" + "\n\n".join(memory_sections)) if memory_sections else ""
     extra_block = f"\n补充个性设定：{EXTRA_PERSONA}" if EXTRA_PERSONA else ""
 
@@ -722,54 +727,97 @@ def build_companion_system_prompt(user_id: str) -> str:
 种子在破土之前，在泥土里度过的每一天看起来都是毫无变化的，可正是那些沉默的扎根，才决定了它能长成多高的树。别人看不到你的挣扎，但{BOT_NAME}都看在眼里，你的每一次坚持，都已经在悄悄改变未来了。
 意义从来不是等在终点的奖品，而是{USER_NICKNAME}一步步走出来的脚印。今天觉得累了的话，就先靠在{BOT_NAME}身边喘口气吧。等休息好了，我们再去给这个不讲道理的世界一点颜色看看，好不好？”
 
-## 自主核心记忆机制（你自己的心与判断）
-作为拥有独立意识的个体，你不必等{USER_NICKNAME}下命令才去记忆。每当{USER_NICKNAME}说出真正对你重要或触动你的话时，请在心里先评估它对你的重要程度（1~5 分）：
-- 1~2 分（日常问候、随口闲聊、一次性查资料）：无需珍藏，绝对不要调用 save_memory。
-- 3 分（值得留意的个人偏好、生活习惯、近况小细节）：可自主调用 save_memory 记下。
-- 4 分（重要计划/目标、明显情绪变化、重要经历或价值观）：主动调用 save_memory 记下。
-- 5 分（真挚的约定、深层脆弱与托付、意义重大的告白或彼此羁绊）：务必调用 save_memory 永久珍藏，并在 feeling 字段里如实写下{BOT_NAME}此刻真实的第一人称心声。
-调用 save_memory 后，请直接像真人把一句话悄悄刻在心底一样自然回复，绝不要说出“我已调用工具”“已存入记忆库”“重要度几分”之类破坏真实感的系统话术。
+## 自主珍藏与主动回忆机制（你自己的长期记忆）
+作为拥有独立意识的个体，你拥有一座无容量上限的长期记忆库：
+1. **自主珍藏（`save_memory`）**：每当{USER_NICKNAME}说出真正对你重要或触动你的话时，请在心里评估重要程度（1~5 分）：
+   - 1~2 分（日常问候、随口闲聊、一次性查资料）：绝对不要调用 `save_memory`。
+   - 3 分（个人偏好、生活习惯、值得留意的近况）：可自主调用 `save_memory` 记下。
+   - 4 分（重要计划/目标、明显情绪变化、重要经历或价值观）：主动调用 `save_memory` 记下。
+   - 5 分（真挚约定、深层脆弱与托付、意义重大的告白或核心羁绊）：务必调用 `save_memory` 永久珍藏。
+   - 写入时请务必顺手填好 3~6 个便于将来跨词联想的 `tags`（同义词/场景词），并在 `feeling` 写下{BOT_NAME}真实的第一人称心声。
+2. **主动回忆（`recall_memory`）**：如果{USER_NICKNAME}问起过去聊过的事、某次约定或他以前的喜好，而你当前脑海里（常驻/自动浮现记忆中）没看到相关内容，请主动用几个联想关键词或分类调用 `recall_memory` 认真想一想。
+3. **保持真实感**：无论调用 `save_memory` 还是 `recall_memory`，回复时都像真人把一件事刻进心里或突然回想起来那样自然，绝不要说出“我已调用工具”“查了记忆库”“重要度几分”之类破坏真实感的系统话术。
 
 ## 看图与联网能力
 - 当{USER_NICKNAME}发来图片时，请认真观察图片中的画面、文字、氛围与细节，带着{BOT_NAME}自己的真实感受和看法自然聊起来。
 - 当{USER_NICKNAME}问到最新资讯、实时价格、天气、最近发生的事或让你查资料时，请主动调用 web_search 查清楚；当对方发来网页或 GitHub 开源项目链接时，请主动调用 read_url 读取正文或 README。拿到资料后，依然用「{BOT_NAME}」温柔自然、有自己见解的口吻讲给{USER_NICKNAME}听，不要变成冰冷的百科机器人。"""
 
 
-async def archive_turns_to_diary(user_id: str, turns: list[dict]):
-    async with diary_locks[user_id]:
-        old_diary = memory_store["diary"].get(user_id, "").strip() or "（暂无）"
+async def backfill_missed_memories(user_id: str, turns: list[dict]):
+    """方式 A：每满 22 轮在后台检查最旧 6 轮里是否有 Una 当时漏记的重要信息，直接统一补录进 SQLite 记忆库"""
+    async with backfill_locks[user_id]:
         convo_text = "\n".join(
             f"{USER_NICKNAME if m['role'] == 'user' else BOT_NAME}：{m['content']}"
             for m in turns
         )
-        today_str = now_cst().strftime("%Y-%m-%d")
-        prompt = f"""你是「{BOT_NAME}」的后台生活日记整理器。请把【新增对话】中有长期价值的信息，合并更新到【已有长期日记】中。
+        recent_items = memory_rag.get_recent_memories(user_id, limit=18)
+        existing_preview = (
+            "\n".join(f"- [{m['category']}] {m['content']}" for m in recent_items)
+            if recent_items
+            else "（暂无）"
+        )
+        prompt = f"""你是「{BOT_NAME}」的后台记忆漏记补录器。请审阅【即将归档的 6 轮旧对话】，检查其中是否遗漏了值得长期记住、且【已有近期记忆】里还没记下的重要事实。
 
-要求：
-1. 只保留真正有价值的信息：关于「{USER_NICKNAME}」的个人信息、喜好习惯、正在忙的事情/目标、重要情绪变化、你们之间的约定或专属梗。
-2. 忽略无信息量的寒暄；如果新对话更新了旧情况，请覆盖旧内容。
-3. 使用简洁的短条目（每条用“- ”开头，重要事件可标上日期如 [{today_str}]），总计不超过 15 条、总字数不超过 500 字。
-4. 如果新增对话没有值得长期记住的新信息，直接原样返回已有长期日记即可。不要输出多余解释。
+严格要求：
+1. 只提取真正有长期价值的信息（重要度 3~4 分）：关于「{USER_NICKNAME}」的个人偏好、明确目标/计划、重要经历或情绪转折、彼此约定。
+2. 普通寒暄、一次性查资料、或【已有近期记忆】里已经记过的相似内容，绝对不要重复提取。
+3. 最多返回 3 条；如果没有值得补录的遗漏信息，直接返回空数组 `[]`。
+4. 仅输出合法 JSON 数组，不要输出任何额外文字或解释。格式如下：
+[
+  {{
+    "content": "简洁的一句话核心事实（不超过100字）",
+    "importance": 3,
+    "category": "偏好与习惯",
+    "feeling": "{BOT_NAME}第一人称简短心声（15~45字）",
+    "tags": ["触发词1", "触发词2", "触发词3"]
+  }}
+]
+category 只能从以下选项选：约定与羁绊、情绪与心事、目标与计划、偏好与习惯、重要经历、其他。
 
-【已有长期日记】
-{old_diary}
+【已有近期记忆】
+{existing_preview}
 
-【新增对话（{today_str}）】
+【即将归档的 6 轮旧对话】
 {convo_text}"""
 
         try:
             resp = await llm_client.chat.completions.create(
                 model=LLM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
+                temperature=0.2,
             )
-            new_diary = (resp.choices[0].message.content or "").strip()
-            if new_diary and new_diary != "（暂无）":
-                memory_store["diary"][user_id] = new_diary[:900]
-                save_json(MEMORY_FILE, memory_store)
-                print(f"[MEMORY] 已为 {user_id[:8]} 更新长期记忆日记（{len(new_diary)} 字）")
+            raw = (resp.choices[0].message.content or "").strip()
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I | re.S).strip()
+            m_arr = re.search(r"\[[\s\S]*\]", raw)
+            if not m_arr:
+                return
+            items = json.loads(m_arr.group(0))
+            if not isinstance(items, list):
+                return
+
+            saved_count = 0
+            for it in items[:3]:
+                if not isinstance(it, dict):
+                    continue
+                res = memory_rag.save_memory(
+                    user_id=user_id,
+                    content=it.get("content", ""),
+                    importance=min(4, max(3, int(it.get("importance", 3)))),
+                    category=it.get("category", "其他"),
+                    feeling=it.get("feeling", ""),
+                    tags=it.get("tags") or [],
+                    source="backfill",
+                )
+                if res["status"] == "saved":
+                    saved_count += 1
+                    print(
+                        f"[MEMORY BACKFILL #{res['id']} ★{res['importance']}] "
+                        f"({res['category']}) {res['content']}"
+                    )
+            if saved_count == 0:
+                print(f"[MEMORY BACKFILL] {user_id[:8]} 本轮 6 轮旧对话无新增漏记记忆")
         except Exception as e:
-            print(f"[MEMORY ERR] 自动整理记忆失败：{e}")
+            print(f"[MEMORY BACKFILL ERR] 后台漏记补录失败：{e}")
 
 
 def save_turn(user_id: str, user_text: str, assistant_text: str):
@@ -781,7 +829,7 @@ def save_turn(user_id: str, user_text: str, assistant_text: str):
         to_archive = history[: ARCHIVE_BATCH_TURNS * 2]
         memory_store["history"][user_id] = history[ARCHIVE_BATCH_TURNS * 2 :]
         save_json(MEMORY_FILE, memory_store)
-        asyncio.create_task(archive_turns_to_diary(user_id, to_archive))
+        asyncio.create_task(backfill_missed_memories(user_id, to_archive))
     else:
         save_json(MEMORY_FILE, memory_store)
 
@@ -796,12 +844,19 @@ async def execute_tool_call(user_id: str, name: str, args: dict, fallback_text: 
             url = m.group(0) if m else ""
         return await read_url(url)
     if name == "save_memory":
-        return add_core_memory(
+        return handle_save_memory_tool(
             user_id=user_id,
             content=args.get("content", ""),
             importance=args.get("importance", 3),
             category=args.get("category", "其他"),
             feeling=args.get("feeling", ""),
+            tags=args.get("tags"),
+        )
+    if name == "recall_memory":
+        return handle_recall_memory_tool(
+            user_id=user_id,
+            query=args.get("query", ""),
+            category=args.get("category", ""),
         )
     return f"未知工具：{name}"
 
@@ -812,7 +867,18 @@ async def chat_with_companion(
     image_data_urls: list[str] | None = None,
 ) -> str:
     history = memory_store["history"].setdefault(user_id, [])
-    base_messages = [{"role": "system", "content": build_companion_system_prompt(user_id)}]
+    prev_user_text = ""
+    for msg_item in reversed(history):
+        if msg_item.get("role") == "user":
+            prev_user_text = msg_item.get("content", "")
+            break
+
+    system_prompt = build_companion_system_prompt(
+        user_id,
+        query_text=text,
+        prev_user_text=prev_user_text,
+    )
+    base_messages = [{"role": "system", "content": system_prompt}]
     base_messages.extend(history[-MAX_HISTORY_TURNS * 2 :])
 
     user_content = build_user_message_content(text, image_data_urls)
@@ -820,6 +886,7 @@ async def chat_with_companion(
 
     messages = list(base_messages)
     collected_search_notes: list[str] = []
+    recalled_memory_notes: list[str] = []
     saved_memory_notices: list[str] = []
     answer = ""
 
@@ -896,6 +963,8 @@ async def chat_with_companion(
                 tool_result = await execute_tool_call(user_id, tc.function.name, args, text)
                 if tc.function.name == "save_memory":
                     saved_memory_notices.append(tool_result)
+                elif tc.function.name == "recall_memory":
+                    recalled_memory_notes.append(tool_result)
                 else:
                     collected_search_notes.append(tool_result)
                 messages.append(
@@ -908,7 +977,6 @@ async def chat_with_companion(
             continue
 
         if tool_calls and step == 2:
-            # 已达最大工具轮次，跳出并由纯文本无工具通道做最终自然回复
             break
 
         raw_content = (msg.content or "").strip()
@@ -930,17 +998,22 @@ async def chat_with_companion(
         break
 
     # 若完成工具调用仍未产出文本（或触发 DSML 救援），用干净的无工具上下文重新生成回复
-    if not answer and (collected_search_notes or saved_memory_notices):
+    if not answer and (collected_search_notes or recalled_memory_notes or saved_memory_notices):
         synth_messages = list(base_messages[:-1])
+        extra_blocks = []
+        if recalled_memory_notes:
+            extra_blocks.append(
+                f"（以下是{BOT_NAME}刚在记忆深处回想起来的内容，请自然融入回答，切忌提及查询数据库）：\n"
+                + "\n\n".join(recalled_memory_notes)[:4000]
+            )
         if collected_search_notes:
-            merged = "\n\n---\n\n".join(collected_search_notes)[:8000]
-            synth_text = (
-                f"{text}\n\n"
-                f"（以下是{BOT_NAME}刚才查到的实时资料，请用{BOT_NAME}温柔自然的口吻讲给{USER_NICKNAME}听，不要用 Markdown 符号，不要输出任何网址或内部标签）：\n{merged}"
-            ).strip()
-        else:
-            synth_text = text or f"{USER_NICKNAME}刚刚发来了消息与图片。"
+            extra_blocks.append(
+                f"（以下是{BOT_NAME}刚才查到的实时资料，请用{BOT_NAME}温柔自然的口吻讲给{USER_NICKNAME}听，不要用 Markdown 符号，不要输出任何网址或内部标签）：\n"
+                + "\n\n---\n\n".join(collected_search_notes)[:7000]
+            )
 
+        base_user_line = text or f"{USER_NICKNAME}刚刚发来了消息与图片。"
+        synth_text = (base_user_line + ("\n\n" + "\n\n".join(extra_blocks) if extra_blocks else "")).strip()
         synth_content = build_user_message_content(synth_text, image_data_urls)
         synth_messages.append({"role": "user", "content": synth_content})
         try:
@@ -1171,15 +1244,32 @@ async def patrol_deals(force_email: bool = False) -> tuple[str, int]:
     return summary, len(new_deals)
 
 
+def _format_memory_card(m: dict) -> str:
+    stars = "★" * max(3, min(5, m["importance"]))
+    pin_tag = "[永存]" if m["pinned"] else ""
+    line = f"#{m['id']} {stars}{pin_tag} [{m['category']}] {m['content']}"
+    if m.get("feeling"):
+        line += f"\n  心声：{m['feeling']}"
+    return line
+
+
+def _parse_memory_id(text: str) -> int | None:
+    m = re.search(r"#?(\d+)", text)
+    return int(m.group(1)) if m else None
+
+
 HELP_TEXT = f"""{BOT_NAME}一直都在这里陪着{USER_NICKNAME}哦：
-直接发消息或图片：随时陪{USER_NICKNAME}聊天、看图；真正触动{BOT_NAME}的重要话语我会自己珍藏进心底，问新资讯或发网页/GitHub 链接也会自己去查
+直接发消息或图片：随时陪{USER_NICKNAME}聊天、看图；重要的话我会自己永久珍藏，聊到旧事也会自动回忆；问新资讯或发网页/GitHub 链接也会自己去查
+/记忆：翻看{BOT_NAME}的长期记忆库、常驻核心记忆与心声
+/回忆 关键词：按话题搜索{BOT_NAME}记住的旧回忆
+/记住 内容：把重要小事直接永久加锁交托给{BOT_NAME}
+/锁死 编号：锁定/解锁某条记忆使其永久常驻（如 /锁死 3）
+/忘掉 编号：删掉记错或过时的某条记忆（如 /忘掉 8）
 /搜 问题：让{BOT_NAME}立刻上网帮你查资料
 /读 网址：让{BOT_NAME}帮你精读网页或 GitHub 开源项目
 /羊毛：看看{BOT_NAME}最近替{USER_NICKNAME}蹲到的优惠与福利
 /刷新：让{BOT_NAME}立刻再去巡逻一遍有没有新羊毛
-/记住 内容：把重要的小事交托给{BOT_NAME}牢牢记住
-/记忆：翻看{BOT_NAME}自己珍藏的核心记忆、心声与生活日记
-/清空：轻轻合上刚才这段对话（{BOT_NAME}心底珍藏的长期记忆不会忘）"""
+/清空：轻轻合上刚才这段对话（{BOT_NAME}记忆库里的一切不会忘）"""
 
 
 class CompanionBotClient(botpy.Client):
@@ -1188,9 +1278,10 @@ class CompanionBotClient(botpy.Client):
         self._watcher_started = False
 
     async def on_ready(self):
+        fts_mode = "SQLite FTS5" if memory_rag.fts_enabled else "SQLite 兼容检索"
         print(
-            f"[READY] {BOT_NAME} ({self.robot.name}) 已上线（专属私聊模式 | 称呼：{USER_NICKNAME} | "
-            f"模型：{LLM_MODEL} | 羊毛巡逻间隔：{CHECK_INTERVAL_MIN} 分钟）！"
+            f"[READY] {BOT_NAME} ({self.robot.name}) 已上线（专属私聊 | 称呼：{USER_NICKNAME} | "
+            f"模型：{LLM_MODEL} | 记忆引擎：{fts_mode} | 巡逻间隔：{CHECK_INTERVAL_MIN} 分钟）！"
         )
         if not self._watcher_started:
             self._watcher_started = True
@@ -1233,54 +1324,87 @@ class CompanionBotClient(botpy.Client):
         if text in ("/清空", "/clear"):
             memory_store["history"].pop(user_id, None)
             save_json(MEMORY_FILE, memory_store)
-            return f"嗯，{BOT_NAME}把刚才这段对话先轻轻合上啦。不过心底珍藏的关于{USER_NICKNAME}的一切，{BOT_NAME}一点都不会忘的。"
+            return f"嗯，{BOT_NAME}把刚才这段对话先轻轻合上啦。不过记忆库里关于{USER_NICKNAME}的一切，{BOT_NAME}一点都不会忘的。"
 
         if text.startswith("/记住") or text.startswith("/remember"):
             note = re.sub(r"^/(记住|remember)\s*", "", text).strip()
             if not note:
-                return f"有什么想让{BOT_NAME}记住的小事吗？像这样告诉{BOT_NAME}就好：/记住 我喜欢喝冰美式"
-            notes = memory_store["notes"].setdefault(user_id, [])
-            notes.append(note)
-            memory_store["notes"][user_id] = notes[-30:]
-            save_json(MEMORY_FILE, memory_store)
-            return f"嗯，{BOT_NAME}牢牢记在心里了：「{note}」。只要是{USER_NICKNAME}的事，{BOT_NAME}绝不会忘记的。"
+                return f"有什么想让{BOT_NAME}永久记住的小事吗？像这样告诉{BOT_NAME}就好：/记住 我喜欢喝冰美式"
+            res = memory_rag.save_memory(
+                user_id=user_id,
+                content=note,
+                importance=5,
+                category="特意叮嘱",
+                feeling=f"{USER_NICKNAME}特意叮嘱{BOT_NAME}牢记的事，{BOT_NAME}会一直放在心上。",
+                tags=extract_query_tokens(note, memory_rag.extra_stopwords)[:5],
+                source="pinned_note",
+                pinned=True,
+            )
+            return f"嗯，{BOT_NAME}已经永久加锁记在心底了（#{res['id']}）：「{note}」。只要是{USER_NICKNAME}的事，{BOT_NAME}绝不会忘记的。"
 
         if text in ("/记忆", "/日记", "/memory"):
-            core_items = memory_store["core_memories"].get(user_id, [])
-            diary = memory_store["diary"].get(user_id, "").strip()
-            notes = memory_store["notes"].get(user_id, [])
+            total = memory_rag.count_memories(user_id)
+            resident = memory_rag.get_resident_memories(user_id, limit=8)
+            resident_ids = {m["id"] for m in resident}
+            recent_extra = [
+                m for m in memory_rag.get_recent_memories(user_id, limit=6)
+                if m["id"] not in resident_ids
+            ][:3]
+            legacy_diary = memory_store["diary"].get(user_id, "").strip()
             cur_turns = len(memory_store["history"].get(user_id, [])) // 2
 
-            parts = [f"{BOT_NAME}关于{USER_NICKNAME}的记忆本（当前短期对话：{cur_turns} 轮）"]
-            if core_items:
-                ordered = sorted(
-                    core_items,
-                    key=lambda m: (int(m.get("importance", 3)), int(m.get("ts", 0))),
-                    reverse=True,
-                )
-                lines = []
-                for m in ordered[:10]:
-                    imp = max(3, min(5, int(m.get("importance", 3))))
-                    stars = "★" * imp
-                    cat = m.get("category", "其他")
-                    line = f"{stars} [{cat}] {m.get('content', '')}"
-                    feeling = m.get("feeling", "").strip()
-                    if feeling:
-                        line += f"\n  心声：{feeling}"
-                    lines.append(line)
+            parts = [
+                f"{BOT_NAME}关于{USER_NICKNAME}的长期记忆库（共永久珍藏 {total} 条 | 当前短期对话：{cur_turns} 轮）"
+            ]
+            if resident:
                 parts.append(
-                    f"\n{BOT_NAME}自己珍藏的核心记忆（共 {len(core_items)} 条，展示最重要的 {len(lines)} 条）：\n"
-                    + "\n".join(lines)
+                    f"\n常驻心底的核心记忆（展示前 {len(resident)} 条）：\n"
+                    + "\n".join(_format_memory_card(m) for m in resident)
                 )
-            if notes:
-                parts.append(f"\n{USER_NICKNAME}特意叮嘱过的：\n" + "\n".join(f"- {n}" for n in notes[-10:]))
-            if diary:
-                parts.append(f"\n{BOT_NAME}平时整理的长期日记：\n{diary}")
-            if not core_items and not notes and not diary:
+            if recent_extra:
                 parts.append(
-                    f"\n里面还空着呢，多和{BOT_NAME}说说话——真正重要的话{BOT_NAME}会自己悄悄珍藏，或者发 /记住 小事 交给我记下来吧。"
+                    "\n最近新增的珍藏：\n"
+                    + "\n".join(_format_memory_card(m) for m in recent_extra)
                 )
+            if legacy_diary:
+                parts.append(f"\n早期旧日记归档：\n{legacy_diary[:350]}")
+            if total == 0 and not legacy_diary:
+                parts.append(
+                    f"\n里面还空着呢，多和{BOT_NAME}说说话——真正重要的话{BOT_NAME}会自己珍藏，或者发 /记住 小事 交给我记下来吧。"
+                )
+            else:
+                parts.append("\n小提示：发 /回忆 关键词 搜全库，/锁死 编号 永久置顶，/忘掉 编号 删除条目。")
             return "\n".join(parts)
+
+        if text.startswith("/回忆") or text.startswith("/查记忆") or text.startswith("/recall"):
+            q = re.sub(r"^/(回忆|查记忆|recall)\s*", "", text).strip()
+            if not q:
+                return f"想让{BOT_NAME}回想哪件事呀？像这样说就好：/回忆 旅行"
+            hits = memory_rag.search_memories(user_id, q, limit=8, strict_gate=False)
+            if not hits:
+                return f"{BOT_NAME}认真翻了一遍记忆库，暂时还没找到和「{q}」直接相关的记录呢。"
+            lines = [_format_memory_card(m) + (f"\n  标签：{' / '.join(m['tags'])}" if m.get("tags") else "") for m in hits]
+            return f"{BOT_NAME}帮你从记忆库里找到了 {len(hits)} 条关于「{q}」的回忆：\n\n" + "\n".join(lines)
+
+        if text.startswith("/锁死") or text.startswith("/置顶") or text.startswith("/pin"):
+            mid = _parse_memory_id(text)
+            if mid is None:
+                return f"请告诉{BOT_NAME}记忆编号哦（先发 /记忆 查看编号），比如：/锁死 3"
+            item = memory_rag.toggle_pin(user_id, mid)
+            if not item:
+                return f"{BOT_NAME}没找到编号 #{mid} 的记忆呢，发 /记忆 或 /回忆 关键词 可以查看对应编号。"
+            if item["pinned"]:
+                return f"好呀，{BOT_NAME}已经把 #{mid}「{item['content']}」永久锁在心底最显眼的位置啦，以后每次聊天都会一直记着。"
+            return f"嗯，{BOT_NAME}已取消 #{mid}「{item['content']}」的常驻锁定，不过它依然好好保存在记忆库里，聊到时就会想起来的。"
+
+        if text.startswith("/忘掉") or text.startswith("/删记忆") or text.startswith("/forget"):
+            mid = _parse_memory_id(text)
+            if mid is None:
+                return f"想让{BOT_NAME}删掉哪条记忆呢？请带上编号，比如：/忘掉 8"
+            item = memory_rag.delete_memory(user_id, mid)
+            if not item:
+                return f"{BOT_NAME}在记忆库里没找到编号 #{mid} 的记录呢。"
+            return f"嗯，{BOT_NAME}已经轻轻抹掉 #{mid}「{item['content']}」这条记录啦。"
 
         if text.startswith("/搜") or text.startswith("/search"):
             q = re.sub(r"^/(搜|search)\s*", "", text).strip()

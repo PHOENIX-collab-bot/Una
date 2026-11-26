@@ -6,6 +6,10 @@
 # Runtime memory & cache
 data/
 memory.json
+memories.db
+*.db
+*.db-wal
+*.db-shm
 seen_deals.json
 latest_deals.json
 
