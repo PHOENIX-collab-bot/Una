@@ -2,5 +2,6 @@ qq-botpy
 openai
 httpx
 python-dotenv
+pilk
 # 可选：未配置 TAVILY_API_KEY 时取消注释启用免费搜索兜底
 # ddgs

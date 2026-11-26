@@ -6,9 +6,13 @@ import ipaddress
 import json
 import os
 import re
+import shutil
 import smtplib
+import subprocess
 import sys
+import tempfile
 import time
+import wave
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from email.mime.text import MIMEText
@@ -28,6 +32,11 @@ try:
 except ImportError:
     DDGS = None
 
+try:
+    import pilk
+except ImportError:
+    pilk = None
+
 # 让 systemd 日志实时打印，不延迟缓冲
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -40,6 +49,8 @@ QQ_SECRET = os.getenv("QQ_SECRET", "").strip()
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com").strip() or "https://api.deepseek.com"
 LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-flash").strip() or "deepseek-flash"
+ASR_API_URL = os.getenv("ASR_API_URL", "https://api.deepseek.com/v1/tools/asr").strip() or "https://api.deepseek.com/v1/tools/asr"
+ASR_API_KEY = os.getenv("ASR_API_KEY", "").strip() or LLM_API_KEY
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "").strip()
 
 BOT_NAME = os.getenv("BOT_NAME", "Una").strip() or "Una"
@@ -69,9 +80,47 @@ RESIDENT_MEMORY_LIMIT = 12
 AUTO_RECALL_LIMIT = 6
 backfill_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
-# 多模态识图限制（防止单张大图撑爆 1G 内存或超出 API 限制）
+# 多模态识图与语音听觉限制（防止单条大附件撑爆 1G 内存或超出 API 8MiB 限制）
 MAX_IMAGES_PER_MSG = 3
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_VOICES_PER_MSG = 2
+MAX_AUDIO_BYTES = 8 * 1024 * 1024
+
+
+def patch_botpy_voice_attachments():
+    """兼容补丁：保留 QQ 开放平台 C2C 语音附件中的 voice_wav_url / asr_refer_text 原始字段"""
+    att_cls = getattr(C2CMessage, "_Attachments", None)
+    if att_cls is not None and not getattr(att_cls, "_una_voice_patched", False):
+        orig_att_init = att_cls.__init__
+
+        def _patched_att_init(self, data, *args, **kwargs):
+            orig_att_init(self, data, *args, **kwargs)
+            if isinstance(data, dict):
+                self.voice_wav_url = data.get("voice_wav_url")
+                self.asr_refer_text = data.get("asr_refer_text")
+                self.raw_data = data
+
+        att_cls.__init__ = _patched_att_init
+        att_cls._una_voice_patched = True
+
+    if not getattr(C2CMessage, "_una_msg_patched", False):
+        orig_msg_init = C2CMessage.__init__
+
+        def _patched_msg_init(self, *args, **kwargs):
+            orig_msg_init(self, *args, **kwargs)
+            raw_atts = None
+            for candidate in list(args) + list(kwargs.values()):
+                if isinstance(candidate, dict) and "attachments" in candidate:
+                    raw_atts = candidate.get("attachments")
+                    break
+            if isinstance(raw_atts, list):
+                self._una_raw_attachments = raw_atts
+
+        C2CMessage.__init__ = _patched_msg_init
+        C2CMessage._una_msg_patched = True
+
+
+patch_botpy_voice_attachments()
 
 # === 大模型可用工具定义（联网搜索 + 读取网页/GitHub + 自主珍藏记忆 + 主动回忆） ===
 BOT_TOOLS = [
@@ -239,13 +288,59 @@ def is_safe_public_url(url: str) -> bool:
         return False
 
 
-# === 技能 0：多模态识图（解析 QQ 私聊图片附件并转为 Base64 Data URL） ===
+# === 技能 0：多模态识图 & 语音听觉（解析 QQ 私聊图片与语音附件） ===
 def _get_field(obj, key: str, default=""):
     if isinstance(obj, dict):
         val = obj.get(key, default)
     else:
         val = getattr(obj, key, default)
     return default if val is None else val
+
+
+def get_message_attachments(message: C2CMessage) -> list:
+    raw_atts = getattr(message, "_una_raw_attachments", None)
+    if isinstance(raw_atts, list) and raw_atts:
+        return raw_atts
+    return getattr(message, "attachments", None) or []
+
+
+def _normalize_attachment_url(raw_url: str) -> str:
+    raw_url = (raw_url or "").strip()
+    if not raw_url:
+        return ""
+    if raw_url.startswith("//"):
+        url = "https:" + raw_url
+    elif not raw_url.startswith(("http://", "https://")):
+        url = "https://" + raw_url.lstrip("/")
+    else:
+        url = raw_url
+    return url if is_safe_public_url(url) else ""
+
+
+def _is_voice_attachment(att) -> bool:
+    content_type = str(_get_field(att, "content_type", "")).strip().lower()
+    filename = str(_get_field(att, "filename", "")).strip().lower()
+    voice_wav_url = str(_get_field(att, "voice_wav_url", "")).strip()
+    asr_refer_text = str(_get_field(att, "asr_refer_text", "")).strip()
+    if content_type == "voice" or content_type.startswith("audio/"):
+        return True
+    if voice_wav_url or asr_refer_text:
+        return True
+    return filename.endswith((".silk", ".slk", ".amr", ".wav", ".ogg", ".opus", ".mp3", ".m4a"))
+
+
+async def _stream_download_bytes(client: httpx.AsyncClient, url: str, max_bytes: int) -> bytes | None:
+    chunks = bytearray()
+    async with client.stream("GET", url) as r:
+        r.raise_for_status()
+        cl = r.headers.get("content-length", "")
+        if cl.isdigit() and int(cl) > max_bytes:
+            return None
+        async for chunk in r.aiter_bytes():
+            chunks.extend(chunk)
+            if len(chunks) > max_bytes:
+                return None
+    return bytes(chunks) if chunks else None
 
 
 def detect_image_mime(data: bytes) -> str | None:
@@ -263,7 +358,7 @@ def detect_image_mime(data: bytes) -> str | None:
 
 async def extract_image_data_urls(message: C2CMessage) -> tuple[list[str], int]:
     """从 QQ C2C 消息附件中流式下载图片并编码为 Base64 Data URL，返回 (成功列表, 失败图片数)"""
-    attachments = getattr(message, "attachments", None) or []
+    attachments = get_message_attachments(message)
     if not attachments:
         return [], 0
 
@@ -278,6 +373,8 @@ async def extract_image_data_urls(message: C2CMessage) -> tuple[list[str], int]:
         for att in attachments:
             if len(data_urls) >= MAX_IMAGES_PER_MSG:
                 break
+            if _is_voice_attachment(att):
+                continue
 
             raw_url = str(_get_field(att, "url", "")).strip()
             content_type = str(_get_field(att, "content_type", "")).strip().lower()
@@ -296,39 +393,19 @@ async def extract_image_data_urls(message: C2CMessage) -> tuple[list[str], int]:
                 print(f"[VISION SKIP] 跳过非图片附件: {content_type} ({filename})")
                 continue
 
-            if raw_url.startswith("//"):
-                url = "https:" + raw_url
-            elif not raw_url.startswith(("http://", "https://")):
-                url = "https://" + raw_url.lstrip("/")
-            else:
-                url = raw_url
-
-            if not is_safe_public_url(url):
+            url = _normalize_attachment_url(raw_url)
+            if not url:
                 print("[VISION SKIP] 附件链接不是合法公网地址")
                 failed_count += 1
                 continue
 
             try:
-                chunks = bytearray()
-                too_large = False
-                async with client.stream("GET", url) as r:
-                    r.raise_for_status()
-                    cl = r.headers.get("content-length", "")
-                    if cl.isdigit() and int(cl) > MAX_IMAGE_BYTES:
-                        too_large = True
-                    else:
-                        async for chunk in r.aiter_bytes():
-                            chunks.extend(chunk)
-                            if len(chunks) > MAX_IMAGE_BYTES:
-                                too_large = True
-                                break
-
-                if too_large or not chunks:
+                img_bytes = await _stream_download_bytes(client, url, MAX_IMAGE_BYTES)
+                if not img_bytes:
                     print(f"[VISION SKIP] 图片大小异常或超过 {MAX_IMAGE_BYTES // (1024 * 1024)}MB 上限")
                     failed_count += 1
                     continue
 
-                img_bytes = bytes(chunks)
                 mime = detect_image_mime(img_bytes)
                 if not mime:
                     print(f"[VISION SKIP] 不支持的图片文件头（声明类型：{content_type or '未知'}）")
@@ -347,12 +424,175 @@ async def extract_image_data_urls(message: C2CMessage) -> tuple[list[str], int]:
     return data_urls, failed_count
 
 
-def build_user_message_content(text: str, image_data_urls: list[str] | None = None):
+def detect_asr_audio_format(data: bytes) -> tuple[str, str] | None:
+    """识别 DeepSeek 官方 ASR 原生支持的音频格式（16-bit PCM WAV 或 Ogg Opus）"""
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return ("voice.wav", "audio/wav")
+    if data.startswith(b"OggS"):
+        return ("voice.ogg", "audio/ogg")
+    return None
+
+
+def is_silk_audio(data: bytes) -> bool:
+    return b"#!SILK_V3" in data[:16]
+
+
+def decode_audio_to_wav_sync(raw_bytes: bytes, ext_hint: str = ".silk") -> bytes | None:
+    """将腾讯 SILK（通过 pilk）或其它格式（通过 ffmpeg）解码为标准 16-bit 单声道 WAV"""
+    if not raw_bytes:
+        return None
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        if is_silk_audio(raw_bytes):
+            if pilk is None:
+                print("[VOICE WARN] 收到原生 SILK 语音但未安装 pilk，请运行：/opt/studybot/venv/bin/pip install pilk")
+                return None
+            silk_path = td_path / "in.silk"
+            pcm_path = td_path / "out.pcm"
+            wav_path = td_path / "out.wav"
+            silk_path.write_bytes(raw_bytes)
+            try:
+                try:
+                    pilk.decode(str(silk_path), str(pcm_path), rate=24000)
+                except TypeError:
+                    pilk.decode(str(silk_path), str(pcm_path))
+                pcm_bytes = pcm_path.read_bytes()
+                if not pcm_bytes:
+                    return None
+                with wave.open(str(wav_path), "wb") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(24000)
+                    wf.writeframes(pcm_bytes)
+                wav_bytes = wav_path.read_bytes()
+                return wav_bytes if len(wav_bytes) <= MAX_AUDIO_BYTES else None
+            except Exception as e:
+                print(f"[VOICE ERR] SILK 解码失败：{e}")
+                return None
+
+        ffmpeg_bin = shutil.which("ffmpeg")
+        if ffmpeg_bin:
+            in_path = td_path / f"in{ext_hint if ext_hint.startswith('.') else '.bin'}"
+            wav_path = td_path / "out.wav"
+            in_path.write_bytes(raw_bytes)
+            try:
+                subprocess.run(
+                    [ffmpeg_bin, "-y", "-i", str(in_path), "-ac", "1", "-ar", "16000", "-sample_fmt", "s16", str(wav_path)],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=20,
+                )
+                wav_bytes = wav_path.read_bytes()
+                return wav_bytes if (wav_bytes and len(wav_bytes) <= MAX_AUDIO_BYTES) else None
+            except Exception as e:
+                print(f"[VOICE ERR] ffmpeg 转码失败：{e}")
+                return None
+    return None
+
+
+async def transcribe_audio_deepseek(
+    client: httpx.AsyncClient,
+    audio_bytes: bytes,
+    filename: str,
+    mime_type: str,
+) -> str:
+    """调用 DeepSeek 官方工具 API（POST /v1/tools/asr）将音频转写为文字"""
+    if not ASR_API_KEY:
+        return ""
+    r = await client.post(
+        ASR_API_URL,
+        headers={"Authorization": f"Bearer {ASR_API_KEY}"},
+        files={"file": (filename, audio_bytes, mime_type)},
+    )
+    r.raise_for_status()
+    data = r.json()
+    text = (data.get("text") or "").strip()
+    duration_ms = int(data.get("duration_ms") or 0)
+    if text:
+        print(f"[VOICE:DeepSeekASR] 识别成功（{duration_ms / 1000:.1f}s）：{text}")
+    return text
+
+
+async def extract_voice_transcripts(message: C2CMessage) -> tuple[list[str], int]:
+    """解析 QQ 私聊语音附件：优先 DeepSeek 官方 ASR，异常时自动回退 QQ 自带 asr_refer_text"""
+    attachments = get_message_attachments(message)
+    if not attachments:
+        return [], 0
+
+    voice_atts = [att for att in attachments if _is_voice_attachment(att)][:MAX_VOICES_PER_MSG]
+    if not voice_atts:
+        return [], 0
+
+    transcripts: list[str] = []
+    failed_count = 0
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+    }
+
+    async with httpx.AsyncClient(timeout=35, follow_redirects=True, headers=headers) as client:
+        for att in voice_atts:
+            wav_url = _normalize_attachment_url(str(_get_field(att, "voice_wav_url", "")))
+            raw_url = _normalize_attachment_url(str(_get_field(att, "url", "")))
+            asr_refer_text = str(_get_field(att, "asr_refer_text", "")).strip()
+            content_type = str(_get_field(att, "content_type", "")).strip()
+            filename = str(_get_field(att, "filename", "")).strip()
+            print(
+                f"[VOICE] 收到语音附件：type={content_type or '未知'} "
+                f"has_wav={bool(wav_url)} has_raw={bool(raw_url)} has_qq_asr={bool(asr_refer_text)}"
+            )
+
+            audio_payload: tuple[bytes, str, str] | None = None
+            candidate_urls = [u for u in (wav_url, raw_url) if u]
+            for url in candidate_urls:
+                try:
+                    raw_bytes = await _stream_download_bytes(client, url, MAX_AUDIO_BYTES)
+                    if not raw_bytes:
+                        continue
+                    native_fmt = detect_asr_audio_format(raw_bytes)
+                    if native_fmt:
+                        audio_payload = (raw_bytes, native_fmt[0], native_fmt[1])
+                        break
+                    ext_hint = Path(filename).suffix.lower() or ".silk"
+                    decoded_wav = await asyncio.to_thread(decode_audio_to_wav_sync, raw_bytes, ext_hint)
+                    if decoded_wav:
+                        audio_payload = (decoded_wav, "voice.wav", "audio/wav")
+                        break
+                except Exception as e:
+                    print(f"[VOICE ERR] 下载语音附件失败：{e}")
+
+            recognized = ""
+            if audio_payload is not None:
+                try:
+                    recognized = await transcribe_audio_deepseek(
+                        client, audio_payload[0], audio_payload[1], audio_payload[2]
+                    )
+                except Exception as e:
+                    print(f"[VOICE:DeepSeekASR ERR] {e}")
+
+            if not recognized and asr_refer_text:
+                recognized = asr_refer_text
+                print(f"[VOICE:QQ-Fallback] 回退使用 QQ 平台参考转写：{recognized}")
+
+            if recognized:
+                transcripts.append(recognized)
+            else:
+                failed_count += 1
+
+    return transcripts, failed_count
+
+
+def build_user_message_content(
+    text: str,
+    image_data_urls: list[str] | None = None,
+    is_voice: bool = False,
+):
+    display_text = f"（{USER_NICKNAME}刚发来一段语音说）：{text}" if (is_voice and text.strip()) else text
     if not image_data_urls:
-        return text
+        return display_text
     prompt_text = (
-        text.strip()
-        if text.strip()
+        display_text.strip()
+        if display_text.strip()
         else (
             f"{USER_NICKNAME}刚发来 {len(image_data_urls)} 张图片（没有配文字）。"
             f"请仔细看清图片里的画面、文字、细节与情绪，用{BOT_NAME}自然真实的口吻回应{USER_NICKNAME}。"
@@ -738,7 +978,8 @@ def build_companion_system_prompt(user_id: str, query_text: str = "", prev_user_
 2. **主动回忆（`recall_memory`）**：如果{USER_NICKNAME}问起过去聊过的事、某次约定或他以前的喜好，而你当前脑海里（常驻/自动浮现记忆中）没看到相关内容，请主动用几个联想关键词或分类调用 `recall_memory` 认真想一想。
 3. **保持真实感**：无论调用 `save_memory` 还是 `recall_memory`，回复时都像真人把一件事刻进心里或突然回想起来那样自然，绝不要说出“我已调用工具”“查了记忆库”“重要度几分”之类破坏真实感的系统话术。
 
-## 看图与联网能力
+## 听语音、看图与联网能力
+- 当{USER_NICKNAME}发来语音时，请像真的亲耳听到他的声音那样自然温暖地回应，绝不要在回复里机械复述“识别结果：xxx”或提及语音转文字系统。
 - 当{USER_NICKNAME}发来图片时，请认真观察图片中的画面、文字、氛围与细节，带着{BOT_NAME}自己的真实感受和看法自然聊起来。
 - 当{USER_NICKNAME}问到最新资讯、实时价格、天气、最近发生的事或让你查资料时，请主动调用 web_search 查清楚；当对方发来网页或 GitHub 开源项目链接时，请主动调用 read_url 读取正文或 README。拿到资料后，依然用「{BOT_NAME}」温柔自然、有自己见解的口吻讲给{USER_NICKNAME}听，不要变成冰冷的百科机器人。"""
 
@@ -865,6 +1106,7 @@ async def chat_with_companion(
     user_id: str,
     text: str,
     image_data_urls: list[str] | None = None,
+    is_voice: bool = False,
 ) -> str:
     history = memory_store["history"].setdefault(user_id, [])
     prev_user_text = ""
@@ -881,7 +1123,7 @@ async def chat_with_companion(
     base_messages = [{"role": "system", "content": system_prompt}]
     base_messages.extend(history[-MAX_HISTORY_TURNS * 2 :])
 
-    user_content = build_user_message_content(text, image_data_urls)
+    user_content = build_user_message_content(text, image_data_urls, is_voice=is_voice)
     base_messages.append({"role": "user", "content": user_content})
 
     messages = list(base_messages)
@@ -1014,7 +1256,7 @@ async def chat_with_companion(
 
         base_user_line = text or f"{USER_NICKNAME}刚刚发来了消息与图片。"
         synth_text = (base_user_line + ("\n\n" + "\n\n".join(extra_blocks) if extra_blocks else "")).strip()
-        synth_content = build_user_message_content(synth_text, image_data_urls)
+        synth_content = build_user_message_content(synth_text, image_data_urls, is_voice=is_voice)
         synth_messages.append({"role": "user", "content": synth_content})
         try:
             synth_resp = await llm_client.chat.completions.create(
@@ -1034,12 +1276,14 @@ async def chat_with_companion(
     if not answer:
         answer = f"抱歉，{USER_NICKNAME}……{BOT_NAME}刚刚想得有点入神了，可以再和{BOT_NAME}说一遍吗？"
 
-    # 短期对话记录只存轻量文本标记，绝不把 Base64 图片写进 memory.json
+    # 短期对话记录只存轻量文本标记，绝不把 Base64 图片或音频二进制写进 memory.json
+    prefix_tags = []
+    if is_voice:
+        prefix_tags.append("[语音]")
     if image_data_urls:
-        img_tag = f"[发来 {len(image_data_urls)} 张图片]"
-        history_user_text = f"{img_tag} {text}".strip() if text.strip() else img_tag
-    else:
-        history_user_text = text
+        prefix_tags.append(f"[发来 {len(image_data_urls)} 张图片]")
+    tag_prefix = "".join(prefix_tags)
+    history_user_text = f"{tag_prefix} {text}".strip() if tag_prefix else text
 
     save_turn(user_id, history_user_text, answer)
     return answer
@@ -1259,7 +1503,7 @@ def _parse_memory_id(text: str) -> int | None:
 
 
 HELP_TEXT = f"""{BOT_NAME}一直都在这里陪着{USER_NICKNAME}哦：
-直接发消息或图片：随时陪{USER_NICKNAME}聊天、看图；重要的话我会自己永久珍藏，聊到旧事也会自动回忆；问新资讯或发网页/GitHub 链接也会自己去查
+直接发消息、语音或图片：随时陪{USER_NICKNAME}聊天、听语音、看图；重要的话我会自己永久珍藏，聊到旧事也会自动回忆；问新资讯或发网页/GitHub 链接也会自己去查
 /记忆：翻看{BOT_NAME}的长期记忆库、常驻核心记忆与心声
 /回忆 关键词：按话题搜索{BOT_NAME}记住的旧回忆
 /记住 内容：把重要小事直接永久加锁交托给{BOT_NAME}
@@ -1279,9 +1523,10 @@ class CompanionBotClient(botpy.Client):
 
     async def on_ready(self):
         fts_mode = "SQLite FTS5" if memory_rag.fts_enabled else "SQLite 兼容检索"
+        silk_mode = "pilk就绪" if pilk is not None else "仅WAV直连"
         print(
             f"[READY] {BOT_NAME} ({self.robot.name}) 已上线（专属私聊 | 称呼：{USER_NICKNAME} | "
-            f"模型：{LLM_MODEL} | 记忆引擎：{fts_mode} | 巡逻间隔：{CHECK_INTERVAL_MIN} 分钟）！"
+            f"模型：{LLM_MODEL} | 记忆引擎：{fts_mode} | 语音：DeepSeek ASR/{silk_mode} | 巡逻间隔：{CHECK_INTERVAL_MIN} 分钟）！"
         )
         if not self._watcher_started:
             self._watcher_started = True
@@ -1304,13 +1549,32 @@ class CompanionBotClient(botpy.Client):
         text: str,
         image_data_urls: list[str] | None = None,
         failed_images: int = 0,
+        voice_transcripts: list[str] | None = None,
+        failed_voices: int = 0,
     ) -> str:
         text = text.strip()
         image_data_urls = image_data_urls or []
+        voice_transcripts = [v.strip() for v in (voice_transcripts or []) if v.strip()]
+
+        if voice_transcripts:
+            voice_text = "\n".join(voice_transcripts)
+            combined_text = f"{text}\n{voice_text}".strip() if text else voice_text
+            return await chat_with_companion(
+                user_id,
+                combined_text,
+                image_data_urls=image_data_urls,
+                is_voice=True,
+            )
 
         # 发来图片时直接交给多模态伴侣对话（哪怕不带文字也能看懂）
         if image_data_urls:
             return await chat_with_companion(user_id, text, image_data_urls=image_data_urls)
+
+        if not text and failed_voices > 0:
+            return (
+                f"{USER_NICKNAME}，{BOT_NAME}收到你的语音啦，不过刚才那段语音信号有点模糊没能听清，"
+                f"可以再发一次或者打几个字告诉{BOT_NAME}吗？"
+            )
 
         if not text and failed_images > 0:
             return (
@@ -1433,11 +1697,14 @@ class CompanionBotClient(botpy.Client):
         uid = message.author.user_openid
         try:
             image_data_urls, failed_images = await extract_image_data_urls(message)
+            voice_transcripts, failed_voices = await extract_voice_transcripts(message)
             reply = await self.handle_message(
                 uid,
                 message.content or "",
                 image_data_urls=image_data_urls,
                 failed_images=failed_images,
+                voice_transcripts=voice_transcripts,
+                failed_voices=failed_voices,
             )
         except Exception as e:
             reply = f"抱歉，{USER_NICKNAME}……{BOT_NAME}刚刚好像有点恍神了（{e}），可以再对{BOT_NAME}说一遍吗？"

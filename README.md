@@ -1,6 +1,6 @@
-# Una — 7×24 QQ 专属独立灵魂伴侣 & 长期记忆 RAG & 多模态看图机器人
+# Una — 7×24 QQ 专属独立灵魂伴侣 & 长期记忆 RAG & 语音听觉 & 多模态看图机器人
 
-基于官方 `qq-botpy`（WebSocket 长连接）、Python 内置 **SQLite FTS5 轻量 RAG 长期记忆引擎** 与 OpenAI 兼容大模型接口（默认官方 `deepseek-flash` 多模态模型）构建，专为 **Debian 12（2 核 1G 海外 VPS）** 设计的轻量级 7×24 在线 QQ 专属私聊机器人。单进程内存占用约 65MB，零额外向量库依赖、免域名、免备案、零个人 QQ 封号风险。
+基于官方 `qq-botpy`（WebSocket 长连接）、Python 内置 **SQLite FTS5 轻量 RAG 长期记忆引擎** 与 DeepSeek 官方接口（`deepseek-flash` 多模态对话 + `/v1/tools/asr` 语音识别）构建，专为 **Debian 12（2 核 1G 海外 VPS）** 设计的轻量级 7×24 在线 QQ 专属私聊机器人。单进程内存占用约 65MB，零额外向量库依赖、免域名、免备案、零个人 QQ 封号风险。
 
 ## 核心特性
 
@@ -10,6 +10,10 @@
   - **自主珍藏**：Una 自主评定重要程度（1~5 分），将 3~5 分的记忆连同第一人称「心声」与同义联想标签 `tags` 存入记忆库；每聊满 22 轮后台自动运行「漏记补录器」查缺补漏；
   - **双通道唤醒**：常驻 12 条核心/加锁记忆 + 潜意识自动联想（中文 2-gram BM25 + 标签命中，耗时 <5ms，动态补入最相关 6 条）+ Una 自主调用 `recall_memory` 工具主动回忆；
   - 支持 `/记忆`、`/回忆 关键词`、`/记住 内容`、`/锁死 编号`、`/忘掉 编号` 全套精细管理。
+- **QQ 私聊语音听觉（DeepSeek 官方 ASR + SILK 兜底）**：
+  - 内置 `qq-botpy` 语音附件字段兼容补丁，自动提取 `voice_wav_url`、`asr_refer_text` 与原生 `.silk` 链接；
+  - 优先流式下载平台预转 WAV（缺失时自动通过 `pilk` 将腾讯 SILK 解码为 16-bit PCM WAV），复用现有 `LLM_API_KEY` 调用 DeepSeek 官方 `POST /v1/tools/asr` 精准转写，异常时自动回退 QQ 平台 `asr_refer_text`；
+  - 识别内容无缝接入 Una 的自然对话、双模式唤醒、RAG 联想与自主记忆珍藏，回复保持纯粹活人感。
 - **多模态识图（QQ 私聊看图）**：自动解析 QQ 私聊图片附件（单条最多 3 张、流式限额 ≤8MB、文件头魔数校验 PNG/JPEG/GIF/WebP 并转 Base64 Data URL），直连官方 `deepseek-flash` 看图聊画面细节；历史记录仅保存轻量文本标记（`[发来 N 张图片]`），绝不撑爆存储。
 - **联网搜索 + 网页/GitHub 精读 + DeepSeek DSML 防泄漏**：Tavily + `ddgs` 双引擎搜索、GitHub API / Tavily Extract / Jina Reader 三级正文读取，内置多轮工具状态保持与 DSML 标签清洗保护。
 - **每 3 小时全网羊毛 RSS 自动巡逻 & 邮箱推送**：默认每 **180 分钟（3 小时）**监控 NodeSeek、LowEndTalk Offers、V2EX 优惠、Linux.do 等 RSS 源（可自由追加 X/Twitter RSS 链接），命中关键词后以 Una 的口吻汇报给 418，并将带直达链接的完整简报推送到 QQ 邮箱。
