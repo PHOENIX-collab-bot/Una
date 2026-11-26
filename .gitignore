@@ -13,14 +13,19 @@ memories.db
 seen_deals.json
 latest_deals.json
 
-# Python
+# Python & Packaging
 venv/
 .venv/
 __pycache__/
 *.py[cod]
 *.log
+build/
+dist/
+*.egg-info/
+.pytest_cache/
 
 # OS / Editor
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/

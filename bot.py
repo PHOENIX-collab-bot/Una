@@ -54,7 +54,7 @@ ASR_API_KEY = os.getenv("ASR_API_KEY", "").strip() or LLM_API_KEY
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "").strip()
 
 BOT_NAME = os.getenv("BOT_NAME", "Una").strip() or "Una"
-USER_NICKNAME = os.getenv("USER_NICKNAME", "418").strip() or "418"
+USER_NICKNAME = os.getenv("USER_NICKNAME", "你").strip() or "你"
 EXTRA_PERSONA = os.getenv("EXTRA_PERSONA", "").strip()
 
 RSS_FEEDS = [u.strip() for u in os.getenv("RSS_FEEDS", "").split(",") if u.strip()]
@@ -64,7 +64,7 @@ CHECK_INTERVAL_MIN = max(10, int(os.getenv("CHECK_INTERVAL_MIN", "180")))
 SMTP_USER = os.getenv("SMTP_USER", "").strip()
 SMTP_PASS = os.getenv("SMTP_PASS", "").strip()
 
-DATA_DIR = Path("/opt/studybot/data")
+DATA_DIR = Path(os.getenv("DATA_DIR", "/opt/studybot/data")).expanduser()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 MEMORY_FILE = DATA_DIR / "memory.json"
 MEMORY_DB_FILE = DATA_DIR / "memories.db"
@@ -1825,7 +1825,15 @@ class CompanionBotClient(botpy.Client):
         )
 
 
-if __name__ == "__main__":
+def main():
+    if not (QQ_APPID and QQ_SECRET):
+        raise SystemExit("缺少 QQ_APPID 或 QQ_SECRET，请先配置 .env 文件（可参考 .env.example）。")
+    if not LLM_API_KEY:
+        raise SystemExit("缺少 LLM_API_KEY，请先配置 .env 文件（可参考 .env.example）。")
     intents = botpy.Intents(public_messages=True)
     client = CompanionBotClient(intents=intents)
     client.run(appid=QQ_APPID, secret=QQ_SECRET)
+
+
+if __name__ == "__main__":
+    main()

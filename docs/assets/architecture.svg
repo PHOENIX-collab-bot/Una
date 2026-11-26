@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 460" width="1200" height="460" role="img" aria-label="Una System Architecture Overview">
+  <defs>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#c4b5fd"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="460" rx="18" fill="url(#cardBg)"/>
+  <rect x="1" y="1" width="1198" height="458" rx="17" fill="none" stroke="#334155" stroke-width="1.5"/>
+
+  <text x="40" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="22" font-weight="700" fill="#f8fafc">Una Architecture Overview (1-Process Async Python · ~65MB RAM)</text>
+  <text x="40" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="13.5" fill="#94a3b8">No public domain needed · Official QQ WebSocket C2C · Built-in SQLite FTS5 RAG · Anti-Burn Safety Guard</text>
+
+  <!-- Column 1: User & QQ Gateway -->
+  <g transform="translate(38, 102)">
+    <rect width="235" height="316" rx="14" fill="#1e293b" stroke="#38bdf8" stroke-opacity="0.45" stroke-width="1.5"/>
+    <text x="20" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="15" font-weight="700" fill="#7dd3fc">1. QQ C2C Private Chat</text>
+    <rect x="18" y="54" width="199" height="62" rx="10" fill="#0f172a" stroke="#334155"/>
+    <text x="32" y="80" font-family="sans-serif" font-size="13.5" font-weight="600" fill="#f1f5f9">Text &amp; Slash Commands</text>
+    <text x="32" y="100" font-family="sans-serif" font-size="12" fill="#94a3b8">/记忆 /回忆 /搜 /读 /羊毛</text>
+
+    <rect x="18" y="130" width="199" height="62" rx="10" fill="#0f172a" stroke="#334155"/>
+    <text x="32" y="156" font-family="sans-serif" font-size="13.5" font-weight="600" fill="#f1f5f9">Images (up to 3, ≤8MB)</text>
+    <text x="32" y="176" font-family="sans-serif" font-size="12" fill="#94a3b8">Magic-byte MIME → Base64</text>
+
+    <rect x="18" y="206" width="199" height="62" rx="10" fill="#0f172a" stroke="#334155"/>
+    <text x="32" y="232" font-family="sans-serif" font-size="13.5" font-weight="600" fill="#f1f5f9">Voice Messages (SILK/WAV)</text>
+    <text x="32" y="252" font-family="sans-serif" font-size="12" fill="#94a3b8">__slots__-safe raw cache</text>
+
+    <text x="118" y="298" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#38bdf8">qq-botpy WebSocket (Zero Ban Risk)</text>
+  </g>
+
+  <!-- Column 2: Una Core Engine -->
+  <g transform="translate(328, 102)">
+    <rect width="340" height="316" rx="14" fill="#172554" fill-opacity="0.55" stroke="#818cf8" stroke-opacity="0.6" stroke-width="1.5"/>
+    <text x="20" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="15" font-weight="700" fill="#c4b5fd">2. Una Core Engine (bot.py)</text>
+
+    <rect x="18" y="52" width="304" height="58" rx="10" fill="#0f172a" stroke="#475569"/>
+    <text x="32" y="76" font-family="sans-serif" font-size="13.5" font-weight="600" fill="#e0e7ff">Dual-Mode Independent Persona</text>
+    <text x="32" y="96" font-family="sans-serif" font-size="12" fill="#94a3b8">Gentle Comfort Mode ↔ "Stand Up!" Wakeup</text>
+
+    <rect x="18" y="122" width="304" height="58" rx="10" fill="#0f172a" stroke="#475569"/>
+    <text x="32" y="146" font-family="sans-serif" font-size="13.5" font-weight="600" fill="#e0e7ff">Tool Loop + DSML Leak Guard</text>
+    <text x="32" y="166" font-family="sans-serif" font-size="12" fill="#94a3b8">save_memory · recall_memory · web_search · read_url</text>
+
+    <rect x="18" y="192" width="304" height="58" rx="10" fill="#0f172a" stroke="#f59e0b" stroke-opacity="0.5"/>
+    <text x="32" y="216" font-family="sans-serif" font-size="13.5" font-weight="600" fill="#fde68a">ApiSafetyGuard + Msg Dedup</text>
+    <text x="32" y="236" font-family="sans-serif" font-size="12" fill="#94a3b8">20/min · 300/day · 5-error 120s Circuit Breaker</text>
+
+    <rect x="18" y="262" width="304" height="40" rx="10" fill="#0f172a" stroke="#34d399" stroke-opacity="0.45"/>
+    <text x="170" y="287" text-anchor="middle" font-family="sans-serif" font-size="12.5" font-weight="600" fill="#a7f3d0">QQ Output Sanitizer (No Raw URLs / Markdown)</text>
+  </g>
+
+  <!-- Column 3: Memory & External Services -->
+  <g transform="translate(724, 102)">
+    <!-- SQLite RAG Box -->
+    <rect x="0" y="0" width="438" height="100" rx="14" fill="#1e293b" stroke="#a78bfa" stroke-opacity="0.55" stroke-width="1.5"/>
+    <text x="20" y="30" font-family="sans-serif" font-size="14.5" font-weight="700" fill="#ddd6fe">3A. Unlimited Hybrid RAG (memory_rag.py)</text>
+    <text x="20" y="54" font-family="sans-serif" font-size="12.5" fill="#e2e8f0">SQLite FTS5 (CJK 2-gram BM25) + Semantic Tags</text>
+    <text x="20" y="76" font-family="sans-serif" font-size="12" fill="#94a3b8">Resident Top-12 + &lt;5ms Auto-Recall (6) + 22-Turn Backfill</text>
+
+    <!-- DeepSeek Box -->
+    <rect x="0" y="112" width="438" height="94" rx="14" fill="#1e293b" stroke="#38bdf8" stroke-opacity="0.55" stroke-width="1.5"/>
+    <text x="20" y="142" font-family="sans-serif" font-size="14.5" font-weight="700" fill="#bae6fd">3B. DeepSeek Official API (Single Key)</text>
+    <text x="20" y="166" font-family="sans-serif" font-size="12.5" fill="#e2e8f0">deepseek-flash (Chat + Vision + Tools) &amp; /v1/tools/asr</text>
+    <text x="20" y="188" font-family="sans-serif" font-size="12" fill="#94a3b8">pilk SILK → WAV decoder · QQ asr_refer_text fallback</text>
+
+    <!-- Web & RSS Box -->
+    <rect x="0" y="218" width="438" height="98" rx="14" fill="#1e293b" stroke="#34d399" stroke-opacity="0.5" stroke-width="1.5"/>
+    <text x="20" y="248" font-family="sans-serif" font-size="14.5" font-weight="700" fill="#a7f3d0">3C. Web, GitHub &amp; 3-Hour RSS Patrol</text>
+    <text x="20" y="272" font-family="sans-serif" font-size="12.5" fill="#e2e8f0">Tavily Search/Extract · ddgs · Jina · GitHub API/Raw</text>
+    <text x="20" y="294" font-family="sans-serif" font-size="12" fill="#94a3b8">NodeSeek / LET / V2EX / Linux.do → SMTP QQ Mail</text>
+  </g>
+
+  <!-- Arrows -->
+  <line x1="274" y1="260" x2="324" y2="260" stroke="#7dd3fc" stroke-width="2.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <line x1="670" y1="152" x2="720" y2="152" stroke="#c4b5fd" stroke-width="2.2" marker-start="url(#arrowPurple)" marker-end="url(#arrowPurple)"/>
+  <line x1="670" y1="260" x2="720" y2="260" stroke="#7dd3fc" stroke-width="2.2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <line x1="670" y1="368" x2="720" y2="368" stroke="#7dd3fc" stroke-width="2.2" marker-end="url(#arrow)"/>
+</svg>

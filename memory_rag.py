@@ -129,7 +129,7 @@ def clean_tags(tags) -> list[str]:
 class MemoryRAGStore:
     """基于 Python 内置 SQLite + FTS5 的轻量级个人长期记忆 RAG 存储与检索引擎"""
 
-    def __init__(self, db_path: Path, bot_name: str = "Una", user_nickname: str = "418"):
+    def __init__(self, db_path: Path, bot_name: str = "Una", user_nickname: str = "你"):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.bot_name = bot_name

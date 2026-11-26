@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-label="Una — 7x24 Exclusive QQ AI Companion">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1026"/>
+      <stop offset="50%" stop-color="#141e46"/>
+      <stop offset="100%" stop-color="#1d2b64"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="18%" cy="30%" r="45%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="84%" cy="72%" r="42%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7dd3fc"/>
+      <stop offset="55%" stop-color="#93c5fd"/>
+      <stop offset="100%" stop-color="#c4b5fd"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="320" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="320" rx="20" fill="url(#glow1)"/>
+  <rect width="1200" height="320" rx="20" fill="url(#glow2)"/>
+  <rect x="1.5" y="1.5" width="1197" height="317" rx="19" fill="none" stroke="#93c5fd" stroke-opacity="0.22" stroke-width="1.5"/>
+
+  <!-- Subtle stars -->
+  <g fill="#e0f2fe" opacity="0.65">
+    <circle cx="110" cy="64" r="2"/>
+    <circle cx="245" cy="46" r="1.4"/>
+    <circle cx="960" cy="58" r="2.2"/>
+    <circle cx="1080" cy="95" r="1.5"/>
+    <circle cx="1030" cy="245" r="1.8"/>
+    <circle cx="148" cy="252" r="1.5"/>
+    <circle cx="880" cy="272" r="1.4"/>
+  </g>
+
+  <!-- Left geometric emblem -->
+  <g transform="translate(86, 86)">
+    <rect width="148" height="148" rx="34" fill="#ffffff" fill-opacity="0.06" stroke="#93c5fd" stroke-opacity="0.35" stroke-width="1.5"/>
+    <circle cx="74" cy="74" r="44" fill="none" stroke="url(#accent)" stroke-width="3" stroke-dasharray="10 7"/>
+    <circle cx="74" cy="74" r="28" fill="url(#accent)" fill-opacity="0.16" stroke="#e0f2fe" stroke-opacity="0.65" stroke-width="1.5"/>
+    <path d="M74 48 L79 68 L99 74 L79 80 L74 100 L69 80 L49 74 L69 68 Z" fill="#e0f2fe"/>
+  </g>
+
+  <!-- Title & subtitle -->
+  <text x="278" y="138" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="64" font-weight="800" fill="url(#accent)" letter-spacing="2">Una</text>
+  <text x="424" y="132" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="22" font-weight="500" fill="#cbd5e1">v1.0 · Exclusive 7×24 QQ AI Companion</text>
+
+  <text x="278" y="182" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="20" fill="#e2e8f0" opacity="0.92">
+    Independent Soul · Unlimited SQLite FTS5 Hybrid RAG · Vision &amp; Voice ASR · Web &amp; RSS Patrol
+  </text>
+
+  <!-- Feature pills -->
+  <g transform="translate(278, 214)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="14" font-weight="600">
+    <rect x="0" y="0" width="136" height="34" rx="17" fill="#38bdf8" fill-opacity="0.14" stroke="#7dd3fc" stroke-opacity="0.45"/>
+    <text x="68" y="22" text-anchor="middle" fill="#bae6fd">~65MB RAM</text>
+
+    <rect x="150" y="0" width="176" height="34" rx="17" fill="#818cf8" fill-opacity="0.16" stroke="#a5b4fc" stroke-opacity="0.45"/>
+    <text x="238" y="22" text-anchor="middle" fill="#ddd6fe">SQLite FTS5 RAG</text>
+
+    <rect x="340" y="0" width="176" height="34" rx="17" fill="#34d399" fill-opacity="0.14" stroke="#6ee7b7" stroke-opacity="0.45"/>
+    <text x="428" y="22" text-anchor="middle" fill="#a7f3d0">Vision + DeepSeek ASR</text>
+
+    <rect x="530" y="0" width="170" height="34" rx="17" fill="#f472b6" fill-opacity="0.14" stroke="#f9a8d4" stroke-opacity="0.45"/>
+    <text x="615" y="22" text-anchor="middle" fill="#fbcfe8">Agent-Ready Deploy</text>
+  </g>
+</svg>

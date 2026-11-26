@@ -1,0 +1,13 @@
+services:
+  una:
+    image: ghcr.io/phoenix-collab-bot/una:latest
+    build: .
+    container_name: una-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATA_DIR=/app/data
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data:/app/data

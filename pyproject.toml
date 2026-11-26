@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "una-qq-bot"
+version = "1.0.0"
+description = "Lightweight 7x24 exclusive QQ C2C AI companion with SQLite FTS5 hybrid RAG memory, multimodal vision, DeepSeek ASR voice listening, web/GitHub reading, and RSS deal patrol."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "PHOENIX-collab-bot" }
+]
+keywords = [
+    "qq-bot",
+    "qq-botpy",
+    "ai-companion",
+    "deepseek",
+    "rag",
+    "sqlite-fts5",
+    "multimodal",
+    "asr",
+    "rss-bot"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Chat",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "qq-botpy",
+    "openai>=1.0.0",
+    "httpx>=0.25.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+voice = ["pilk"]
+search = ["ddgs"]
+all = ["pilk", "ddgs"]
+
+[project.scripts]
+una-bot = "bot:main"
+
+[project.urls]
+Homepage = "https://github.com/PHOENIX-collab-bot/Una"
+Repository = "https://github.com/PHOENIX-collab-bot/Una"
+Issues = "https://github.com/PHOENIX-collab-bot/Una/issues"
+Documentation = "https://github.com/PHOENIX-collab-bot/Una/blob/main/docs/DEPLOYMENT.md"
+
+[tool.setuptools]
+py-modules = ["bot", "memory_rag"]
