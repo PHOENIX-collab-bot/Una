@@ -1,0 +1,14 @@
+myuna.ggff.net, www.myuna.ggff.net {
+    root * /opt/studybot/web
+    encode zstd gzip
+    file_server
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    @assets path /assets/*
+    header @assets Cache-Control "public, max-age=2592000, immutable"
+}

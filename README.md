@@ -17,6 +17,7 @@
 </p>
 
 <p align="center">
+  <a href="https://myuna.ggff.net">项目展示官网</a> ·
   <a href="#快速部署小白-5-分钟上手">快速部署</a> ·
   <a href="./docs/AGENT_DEPLOY.md">AI Agent 托管部署</a> ·
   <a href="./docs/ARCHITECTURE.md">技术架构</a> ·
@@ -169,6 +170,7 @@ Una/
 ├── Dockerfile & docker-compose.yml # 容器化部署与 GitHub Packages 镜像配置
 ├── pyproject.toml                # PEP 621 标准 Python 打包配置（支持 pip install 与 una-bot 命令）
 ├── AGENTS.md                     # AI Agent 协作规范（供 Cursor / Antigravity / Claude Code 等读取）
+├── web/                          # 项目展示官网源码（暖纸深墨编辑风 + Archify 交互流程舞台 + Caddy 配置）
 ├── tests/test_una.py             # 离线单元测试套件（GitHub Actions CI 自动验证）
 └── docs/
     ├── AGENT_DEPLOY.md           # 小白专属：AI Agent 托管部署与个性化定制指南
