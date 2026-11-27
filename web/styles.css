@@ -77,6 +77,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
   scroll-padding-top: calc(var(--nav-h) + 24px);
@@ -1017,6 +1021,7 @@ button {
 
 .sub-switch {
   display: inline-flex;
+  flex-wrap: wrap;
   padding: 3px;
   border-radius: 9px;
   border: 1px solid var(--border);
@@ -1485,6 +1490,39 @@ button {
   line-height: 1.8;
   color: var(--ink-primary);
   margin-bottom: 20px;
+}
+
+.mail-none-banner {
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--warm);
+  background: var(--warm-soft);
+  margin-bottom: 20px;
+}
+
+.mail-none-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.mail-none-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-variant-numeric: lining-nums;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.mail-none-desc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.72;
+  color: var(--ink-secondary);
 }
 
 .deal-list {

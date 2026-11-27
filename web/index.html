@@ -235,7 +235,7 @@
         <div class="showcase-tabs" role="tablist" aria-label="Interactive Product Previews">
           <button class="showcase-tab" role="tab" aria-selected="true" data-showcase="chat">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span data-i18n="demo.tabChat">QQ 私聊唤醒 &amp; 语音识别</span>
+            <span data-i18n="demo.tabChat">QQ 私聊与多模态</span>
           </button>
           <button class="showcase-tab" role="tab" aria-selected="false" data-showcase="memory">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
@@ -247,7 +247,7 @@
           </button>
         </div>
 
-        <!-- Panel 1: Chat + Voice ASR Simulator -->
+        <!-- Panel 1: Chat + Independent Modes (Wakeup / Voice ASR / Vision) -->
         <div id="panel-chat" class="showcase-panel active">
           <div class="mock-window">
             <div class="mock-chrome">
@@ -255,16 +255,17 @@
                 <span class="chrome-dots" aria-hidden="true"><span></span><span></span><span></span></span>
                 <div>
                   <div class="chrome-title" data-i18n="chat.chromeTitle">Una · QQ 专属私聊 (C2C)</div>
-                  <div class="chrome-sub" data-i18n="chat.chromeSub">关键称呼已脱敏 · 点击下方 8&quot; 语音气泡体验 ASR 转写流程</div>
+                  <div id="chatChromeSub" class="chrome-sub">关键称呼已脱敏 · 点击右侧按钮切换唤醒、语音识别与多模态看图</div>
                 </div>
               </div>
-              <div class="sub-switch" role="group" aria-label="Chat Scenario Switch">
-                <button type="button" class="active" data-chat-mode="wakeup" data-i18n="chat.modeWakeup">唤醒模式 + 语音</button>
-                <button type="button" data-chat-mode="vision" data-i18n="chat.modeVision">多模态看图 [VISION]</button>
+              <div class="sub-switch" role="tablist" aria-label="Chat Scenario Switch">
+                <button type="button" role="tab" aria-selected="true" class="active" data-chat-mode="wakeup" data-i18n="chat.modeWakeup">唤醒模式</button>
+                <button type="button" role="tab" aria-selected="false" data-chat-mode="voice" data-i18n="chat.modeVoice">语音识别 (ASR)</button>
+                <button type="button" role="tab" aria-selected="false" data-chat-mode="vision" data-i18n="chat.modeVision">多模态看图</button>
               </div>
             </div>
 
-            <!-- Chat Mode 1: Wakeup + Voice -->
+            <!-- Chat Mode 1: Wakeup Mode -->
             <div id="chatWakeup" class="chat-body">
               <div class="chat-row user">
                 <div class="chat-bubble" data-i18n="chat.u1">我。是只只会活在梦里的老鼠。</div>
@@ -284,8 +285,15 @@
                   <p>现在做一件小事就够了：把手机放下，去洗把脸，冷水，三十秒。回来告诉 Una，你现在是清醒的，还是还困在那个洞里。剩下的，我们一件一件来。</p>
                 </div>
               </div>
+            </div>
 
-              <div class="chat-time" data-i18n="chat.voicePrompt">21:55 · 点击下方语音气泡模拟实时语音识别</div>
+            <!-- Chat Mode 2: Independent Voice Recognition (ASR) -->
+            <div id="chatVoice" class="chat-body" hidden>
+              <div class="mode-callout">
+                <span data-i18n="chat.voiceCallout">QQ C2C 语音附件 · pilk SILK 解码 → DeepSeek /v1/tools/asr</span>
+              </div>
+
+              <div class="chat-time" data-i18n="chat.voicePrompt">21:55 · 点击下方 8&quot; 语音气泡模拟实时语音识别</div>
 
               <div class="chat-row user">
                 <div class="voice-cluster">
@@ -327,7 +335,7 @@
               </div>
             </div>
 
-            <!-- Chat Mode 2: Vision -->
+            <!-- Chat Mode 3: Independent Multimodal Vision -->
             <div id="chatVision" class="chat-body" hidden>
               <div class="chat-row user">
                 <div class="chat-bubble">
@@ -393,7 +401,7 @@
           </div>
         </div>
 
-        <!-- Panel 3: RSS Deals Email Simulator -->
+        <!-- Panel 3: RSS Deals Email Simulator (Independent KEEP & FILTERED Views) -->
         <div id="panel-mail" class="showcase-panel">
           <div class="mock-window">
             <div class="mock-chrome">
@@ -401,16 +409,17 @@
                 <span class="chrome-dots" aria-hidden="true"><span></span><span></span><span></span></span>
                 <div>
                   <div class="chrome-title" data-i18n="mail.chromeTitle">QQ 邮箱 · 3 小时羊毛精选简报</div>
-                  <div class="chrome-sub" data-i18n="mail.chromeSub">仅精选出实质优惠才发送 · 邮箱与称呼已脱敏打码</div>
+                  <div id="mailChromeSub" class="chrome-sub">仅精选出实质优惠才发送 · 邮箱与称呼已脱敏打码</div>
                 </div>
               </div>
-              <div class="sub-switch" role="group" aria-label="Mail Filter Switch">
-                <button type="button" class="active" data-mail-mode="kept" data-i18n="mail.modeKept">AI 精选 4 条 (KEEP)</button>
-                <button type="button" data-mail-mode="filtered" data-i18n="mail.modeFiltered">已拦截水帖 (FILTERED)</button>
+              <div class="sub-switch" role="tablist" aria-label="Mail Filter Switch">
+                <button type="button" role="tab" aria-selected="true" class="active" data-mail-mode="kept" data-i18n="mail.modeKept">AI 精选 (KEEP)</button>
+                <button type="button" role="tab" aria-selected="false" data-mail-mode="filtered" data-i18n="mail.modeFiltered">已拦截水帖 (NONE)</button>
               </div>
             </div>
 
-            <div class="mail-shell">
+            <!-- Mail Mode 1: AI Curated Email (KEEP) -->
+            <div id="mailKeptView" class="mail-shell">
               <div class="mail-header">
                 <h3 class="mail-subject" data-i18n-html="mail.subject">[Una 为 <span class="redact">███</span> 挑出的福利] 刚发现 4 条值得看的线索 (11-27 15:26)</h3>
                 <div class="mail-meta">
@@ -426,7 +435,21 @@
               </div>
 
               <div id="mailKeptList" class="deal-list"></div>
-              <div id="mailFilteredList" class="deal-list" hidden></div>
+            </div>
+
+            <!-- Mail Mode 2: Blocked Noise & Zero-Spam Skip (NONE) -->
+            <div id="mailFilteredView" class="mail-shell" hidden>
+              <div class="mail-none-banner">
+                <div class="mail-none-head">
+                  <h3 class="mail-none-title" data-i18n="mail.noneTitle">防空报机制：水帖静默拦截，不发垃圾邮件</h3>
+                  <span class="mono-badge warm" data-i18n="mail.noneBadge">ACTION: SKIP EMAIL (NONE)</span>
+                </div>
+                <p class="mail-none-desc" data-i18n="mail.noneDesc">
+                  每 3 小时巡逻完 4 大社区 RSS 后，AI 会按严格 KEEP / NONE 协议甄别真优惠。下方这类个人二手转让、求推荐或线路吐槽帖会被直接拦截；若整轮没有任何真优惠，直接返回 NONE 静默跳过，彻底杜绝“这一轮没看到划算消息”的空邮件打扰。
+                </p>
+              </div>
+
+              <div id="mailFilteredList" class="deal-list"></div>
             </div>
           </div>
         </div>

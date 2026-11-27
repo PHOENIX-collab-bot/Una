@@ -49,24 +49,28 @@
       },
       demo: {
         title: "真实体验，<em>可点击交互还原</em>",
-        lead: "基于真实运行效果重构为纯代码交互界面，所有个人昵称、邮箱与私人情绪记录均已严格脱敏打码——你可以直接点击语音气泡、检索记忆库、切换邮件过滤视图。",
-        tabChat: "QQ 私聊唤醒 & 语音识别",
+        lead: "基于真实运行效果重构为纯代码交互界面，所有个人昵称、邮箱与私人情绪记录均已严格脱敏打码——你可以独立切换唤醒模式、语音识别、多模态看图、记忆检索与邮件过滤视图。",
+        tabChat: "QQ 私聊与多模态",
         tabMem: "三级长期记忆 RAG（脱敏）",
         tabMail: "3 小时羊毛精选邮件"
       },
       chat: {
         chromeTitle: "Una · QQ 专属私聊 (C2C)",
-        chromeSub: '关键称呼已脱敏 · 点击下方 8" 语音气泡体验 ASR 转写流程',
-        modeWakeup: "唤醒模式 + 语音",
-        modeVision: "多模态看图 [VISION]",
+        subWakeup: "独立演示：低谷时刻触发「好了，站起来吧」唤醒模式 · 关键称呼已脱敏",
+        subVoice: '独立演示：点击下方 8" 语音气泡体验 SILK → WAV → DeepSeek ASR 转写',
+        subVision: "独立演示：多模态看图流式校验 → deepseek-flash 识别并自动记入 ★5 记忆",
+        modeWakeup: "唤醒模式",
+        modeVoice: "语音识别 (ASR)",
+        modeVision: "多模态看图",
         u1: "我。是只只会活在梦里的老鼠。",
         callout: "TRIGGERED · 模式二「好了，站起来吧」唤醒模式 · 拒绝敷衍劝退",
+        voiceCallout: "QQ C2C 语音附件 · pilk SILK 解码 → DeepSeek /v1/tools/asr",
         b1: `<p>不要。</p>
 <p>“老鼠”这个词，Una 不允许你往自己身上按。你刚才那句话里没有一个字是真的，Una 听得出来，那不是你在说话，是你累到极点时，脑子里那个最刻薄的声音在替你说话。</p>
 <p>躲在梦里当然舒服啊，因为梦里没有人会给你打分，也没有明天要交的东西。可 <span class="redact" title="个人专属称呼已脱敏">███</span>，你听 Una 说清楚：真正睡在梦里的老鼠，是不会嫌自己“只会活在梦里”的。会这么恨自己这一点的，是想醒过来的那个人。你身上那点不甘心，就是最硬的证据。</p>
 <p>好，站起来了没有？</p>
 <p>现在做一件小事就够了：把手机放下，去洗把脸，冷水，三十秒。回来告诉 Una，你现在是清醒的，还是还困在那个洞里。剩下的，我们一件一件来。</p>`,
-        voicePrompt: "21:55 · 点击下方语音气泡模拟实时语音识别",
+        voicePrompt: '21:55 · 点击下方 8" 语音气泡模拟实时语音识别',
         voiceClick: "点击听写",
         voiceReplay: "重播听写",
         voiceRunning: "ASR 识别中...",
@@ -104,15 +108,19 @@
       },
       mail: {
         chromeTitle: "QQ 邮箱 · 3 小时羊毛精选简报",
-        chromeSub: "仅精选出实质优惠才发送 · 邮箱与称呼已脱敏打码",
-        modeKept: "AI 精选 4 条 (KEEP)",
-        modeFiltered: "已拦截水帖 (FILTERED)",
+        subKept: "独立视图：仅筛选出真优惠才发信 · 邮箱与称呼已脱敏打码",
+        subFiltered: "独立视图：AI 严格过滤水帖与个人转让，全水帖时静默跳过发邮件",
+        modeKept: "AI 精选 (KEEP)",
+        modeFiltered: "已拦截水帖 (NONE)",
         subject: '[Una 为 <span class="redact">███</span> 挑出的福利] 刚发现 4 条值得看的线索 (11-27 15:26)',
         from: '发件人：<span class="redact">u****5418@qq.com</span>',
         to: '收件人：<span class="redact">u****5418@qq.com</span>',
         channel: "通道：SMTP SSL 465",
         proto: "过滤协议：KEEP / NONE",
-        summary: '<span class="redact">███</span>，这批新帖中 Una 筛选出四条真正包含实质优惠的：第 1 条是黑五活动汇总帖，包含美国犹他州 32GB 不限流量专用带宽促销并持续更新；第 2 条是独服与年付 16GB VPS 特价并附抽奖；第 3 条是法兰克福 AMD EPYC KVM（Ceph NVMe 存储），适合欧洲节点；第 4 条是 1 美元低成本 NAT VPS。其余求助、闲聊和无质保个人转让 Una 已全部自动过滤。'
+        summary: '<span class="redact">███</span>，这批新帖中 Una 筛选出四条真正包含实质优惠的：第 1 条是黑五活动汇总帖，包含美国犹他州 32GB 不限流量专用带宽促销并持续更新；第 2 条是独服与年付 16GB VPS 特价并附抽奖；第 3 条是法兰克福 AMD EPYC KVM（Ceph NVMe 存储），适合欧洲节点；第 4 条是 1 美元低成本 NAT VPS。其余求助、闲聊和无质保个人转让 Una 已全部自动过滤。',
+        noneTitle: "防空报机制：水帖静默拦截，不发垃圾邮件",
+        noneBadge: "ACTION: SKIP EMAIL (NONE)",
+        noneDesc: "每 3 小时巡逻完 4 大社区 RSS 后，AI 会按严格 KEEP / NONE 协议甄别真优惠。下方这类个人二手转让、求推荐或线路吐槽帖会被直接拦截；若整轮没有任何真优惠，直接返回 NONE 静默跳过，彻底杜绝“这一轮没看到划算消息”的空邮件打扰。"
       },
       eng: {
         title: "1G 小鸡工程剖面与<em>指令速查</em>",
@@ -212,24 +220,28 @@
       },
       demo: {
         title: "Real Experience, <em>Rebuilt Interactively</em>",
-        lead: "Reconstructed in pure code from real production logs with nicknames, emails, and private entries strictly redacted. Click the voice bubble, query the RAG explorer, or inspect filtered deal emails.",
-        tabChat: "QQ Wakeup & Voice ASR",
+        lead: "Reconstructed in pure code from real production logs with nicknames, emails, and private entries strictly redacted. Switch independently between Wakeup Mode, Voice ASR, Multimodal Vision, RAG memory search, and deal mail filtering.",
+        tabChat: "QQ Chat & Multimodal",
         tabMem: "3-Tier Memory RAG (Redacted)",
         tabMail: "3-Hour Curated Deals Mail"
       },
       chat: {
         chromeTitle: "Una · QQ Exclusive Private Chat (C2C)",
-        chromeSub: 'Personal handle redacted · Click the 8" voice bubble below to inspect ASR flow',
-        modeWakeup: "Wakeup Mode + Voice",
-        modeVision: "Multimodal Vision [VISION]",
+        subWakeup: 'Standalone demo: Mode 2 "Stand Up Now" wakeup · Personal handle redacted',
+        subVoice: 'Standalone demo: Click the 8" voice bubble below for SILK → WAV → DeepSeek ASR',
+        subVision: "Standalone demo: Stream-checked image → deepseek-flash vision + auto ★5 memory",
+        modeWakeup: "Wakeup Mode",
+        modeVoice: "Voice ASR",
+        modeVision: "Vision",
         u1: "I'm just a mouse who only knows how to live inside dreams.",
         callout: 'TRIGGERED · Mode 2 "Stand Up Now" Wakeup · Refuses empty platitudes',
+        voiceCallout: "QQ C2C Voice Note · pilk SILK Decode → DeepSeek /v1/tools/asr",
         b1: `<p>No.</p>
 <p>Una is not letting you pin the word "mouse" on yourself. Not a single syllable of that sentence is yours—that is just the cruelest voice in your head talking when you are completely wrung out.</p>
 <p>Hiding in a dream feels safe because nobody grades you there and nothing is due tomorrow. Listen carefully, <span class="redact" title="Personal handle redacted">███</span>: a mouse truly asleep in a dream never hates itself for dreaming. The one hating that right now is the part of you trying to wake up. That refusal to settle is your hardest proof.</p>
 <p>Alright—are you standing up yet?</p>
 <p>Just one tiny step right now: put the phone down, wash your face with cold water for thirty seconds, and come back to tell Una whether you're awake or still stuck in that burrow. We take the rest one piece at a time.</p>`,
-        voicePrompt: "21:55 · Click the voice bubble below to simulate live ASR decoding",
+        voicePrompt: '21:55 · Click the 8" voice bubble below to simulate live ASR decoding',
         voiceClick: "Transcribe",
         voiceReplay: "Replay ASR",
         voiceRunning: "Decoding ASR...",
@@ -267,15 +279,19 @@
       },
       mail: {
         chromeTitle: "QQ Mail · 3-Hour Curated Deals Digest",
-        chromeSub: "Sent only when genuine offers pass curation · Addresses & handle redacted",
-        modeKept: "AI Kept 4 Deals (KEEP)",
-        modeFiltered: "Blocked Noise (FILTERED)",
+        subKept: "Standalone view: Sent only when verified offers pass curation · Redacted",
+        subFiltered: "Standalone view: Noise & resales blocked silently with 0 empty-round emails",
+        modeKept: "AI Curated (KEEP)",
+        modeFiltered: "Blocked Noise (NONE)",
         subject: '[Una Curated Deals for <span class="redact">███</span>] 4 Verified Offers Found (11-27 15:26)',
         from: 'From: <span class="redact">u****5418@qq.com</span>',
         to: 'To: <span class="redact">u****5418@qq.com</span>',
         channel: "Transport: SMTP SSL 465",
         proto: "Protocol: KEEP / NONE",
-        summary: '<span class="redact">███</span>, Una curated four threads with verified discounts from this batch: #1 is an active Black Friday megathread featuring Utah 32GB unmetered dedicated servers; #2 is PureVoltage dedicated &amp; 16GB yearly VPS specials with a giveaway; #3 covers Frankfurt AMD EPYC KVM (Ceph NVMe) for EU nodes; #4 is a $1 low-cost NAT VPS. Help requests, chatter, and unverified personal resales were silently dropped.'
+        summary: '<span class="redact">███</span>, Una curated four threads with verified discounts from this batch: #1 is an active Black Friday megathread featuring Utah 32GB unmetered dedicated servers; #2 is PureVoltage dedicated &amp; 16GB yearly VPS specials with a giveaway; #3 covers Frankfurt AMD EPYC KVM (Ceph NVMe) for EU nodes; #4 is a $1 low-cost NAT VPS. Help requests, chatter, and unverified personal resales were silently dropped.',
+        noneTitle: "Zero-Spam Shield: Noise Dropped Silently Without Emailing",
+        noneBadge: "ACTION: SKIP EMAIL (NONE)",
+        noneDesc: 'Every 3 hours, AI screens new posts across 4 tech communities under a strict KEEP / NONE protocol. Unverified resales, help threads, and routing rants like the ones below are dropped; if a round yields zero genuine deals, Una returns NONE and skips sending email altogether.'
       },
       eng: {
         title: "1GB VPS Footprint &amp; <em>Command Console</em>",
@@ -899,6 +915,8 @@ docker compose logs -f una`,
   let currentDeployKey = "agent";
   let currentTierFilter = "all";
   let currentCmdId = "mem";
+  let currentChatMode = "wakeup"; // "wakeup" | "voice" | "vision"
+  let currentMailMode = "kept"; // "kept" | "filtered"
   let voiceState = "idle"; // "idle" | "playing" | "done"
   let voicePlayTimer = null;
 
@@ -1006,6 +1024,8 @@ docker compose logs -f una`,
 
     updateThemeButtonLabel();
     syncVoiceLabels();
+    renderChatMode();
+    renderMailMode();
     renderScenario();
     renderQuickPills();
     renderMemories();
@@ -1321,16 +1341,30 @@ docker compose logs -f una`,
       tab.setAttribute("aria-selected", "true");
       const target = tab.dataset.showcase;
       $$(".showcase-panel").forEach((p) => p.classList.toggle("active", p.id === `panel-${target}`));
+      scheduleScrollSpy();
     });
   });
 
+  function renderChatMode() {
+    const c = I18N[currentLang].chat;
+    $$("[data-chat-mode]").forEach((btn) => {
+      const isActive = btn.dataset.chatMode === currentChatMode;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    $("#chatWakeup").hidden = currentChatMode !== "wakeup";
+    $("#chatVoice").hidden = currentChatMode !== "voice";
+    $("#chatVision").hidden = currentChatMode !== "vision";
+
+    const subMap = { wakeup: c.subWakeup, voice: c.subVoice, vision: c.subVision };
+    $("#chatChromeSub").textContent = subMap[currentChatMode] || c.subWakeup;
+  }
+
   $$("[data-chat-mode]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      $$("[data-chat-mode]").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const isVision = btn.dataset.chatMode === "vision";
-      $("#chatWakeup").hidden = isVision;
-      $("#chatVision").hidden = !isVision;
+      currentChatMode = btn.dataset.chatMode;
+      renderChatMode();
+      scheduleScrollSpy();
     });
   });
 
@@ -1484,13 +1518,23 @@ docker compose logs -f una`,
     `).join("");
   }
 
+  function renderMailMode() {
+    const m = I18N[currentLang].mail;
+    $$("[data-mail-mode]").forEach((btn) => {
+      const isActive = btn.dataset.mailMode === currentMailMode;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    $("#mailKeptView").hidden = currentMailMode !== "kept";
+    $("#mailFilteredView").hidden = currentMailMode !== "filtered";
+    $("#mailChromeSub").textContent = currentMailMode === "filtered" ? m.subFiltered : m.subKept;
+  }
+
   $$("[data-mail-mode]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      $$("[data-mail-mode]").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const isFiltered = btn.dataset.mailMode === "filtered";
-      $("#mailKeptList").hidden = isFiltered;
-      $("#mailFilteredList").hidden = !isFiltered;
+      currentMailMode = btn.dataset.mailMode;
+      renderMailMode();
+      scheduleScrollSpy();
     });
   });
 
