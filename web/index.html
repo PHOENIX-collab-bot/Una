@@ -5,37 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Una — 住在 1G 服务器里的 7×24 QQ 专属 AI 伴侣</title>
   <meta name="description" content="轻量级开源 7×24 QQ 官方专属私聊 AI 伴侣：独立意识双模式人格、零依赖 SQLite FTS5 混合 RAG 长期记忆、多模态看图与 DeepSeek ASR 听语音、3 小时羊毛精选与防空转熔断。" />
-  <meta property="og:title" content="Una — 7×24 Exclusive QQ AI Companion" />
-  <meta property="og:description" content="~65MB RAM · SQLite FTS5 Hybrid RAG · Vision &amp; DeepSeek ASR · MIT Open Source" />
-  <meta property="og:image" content="assets/launch-card.jpg" />
+  <meta name="theme-color" content="#f6f3ec" id="themeColorMeta" />
+  <link rel="canonical" href="https://myuna.ggff.net/" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="alternate icon" href="favicon.svg" />
+
+  <!-- OpenGraph & Twitter Card -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://myuna.ggff.net/" />
+  <meta property="og:site_name" content="Una Open Source" />
+  <meta property="og:title" content="Una — 7×24 Exclusive QQ AI Companion in 65MB RAM" />
+  <meta property="og:description" content="Zero-dependency SQLite FTS5 Hybrid RAG · Vision &amp; DeepSeek ASR · Dual-Mode Companion · 5-Min AI Agent Deploy · MIT License" />
+  <meta property="og:image" content="https://myuna.ggff.net/assets/launch-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:creator" content="@TaintedEvaaaa" />
+  <meta name="twitter:title" content="Una — 7×24 Exclusive QQ AI Companion" />
+  <meta name="twitter:description" content="~65MB RAM · SQLite FTS5 Hybrid RAG · Vision &amp; DeepSeek ASR · MIT Open Source" />
+  <meta name="twitter:image" content="https://myuna.ggff.net/assets/launch-card.jpg" />
+
+  <!-- Lightweight Latin & Monospace fonts only (CJK uses fast high-grade local serif/sans) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="site-header">
     <div class="container nav-inner">
-      <a class="brand" href="#top" aria-label="Una 首页">
+      <a class="brand" href="#top" aria-label="Una Home">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2.5L14.6 9.4L21.5 12L14.6 14.6L12 21.5L9.4 14.6L2.5 12L9.4 9.4L12 2.5Z"/>
+          <svg width="20" height="20" viewBox="0 0 64 64" fill="none">
+            <path d="M 16 32 A 16 16 0 1 0 48 32" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" opacity="0.55" />
+            <path d="M 32 11 L 35.4 24.6 L 49 28 L 35.4 31.4 L 32 45 L 28.6 31.4 L 15 28 L 28.6 24.6 Z" fill="currentColor" />
+            <circle cx="47" cy="17" r="3" fill="var(--warm)" />
           </svg>
         </span>
         <span class="brand-title">Una</span>
         <span class="brand-tag">v1.0 · MIT</span>
       </a>
 
-      <nav class="nav-links" aria-label="主导航">
-        <a href="#architecture">交互架构</a>
-        <a href="#showcase">实景体验</a>
-        <a href="#gallery">视觉画廊</a>
-        <a href="#deploy">快速部署</a>
-        <a href="#contact">开源与合作</a>
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <a href="#architecture" data-nav-target="architecture" data-i18n="nav.arch">交互架构</a>
+        <a href="#showcase" data-nav-target="showcase" data-i18n="nav.showcase">实景体验</a>
+        <a href="#engineering" data-nav-target="engineering" data-i18n="nav.eng">工程与指令</a>
+        <a href="#deploy" data-nav-target="deploy" data-i18n="nav.deploy">快速部署</a>
+        <a href="#contact" data-nav-target="contact" data-i18n="nav.contact">开源与合作</a>
       </nav>
 
       <div class="nav-actions">
-        <button id="themeToggle" class="icon-btn" type="button" aria-label="切换暖纸与星夜主题" title="快捷键 T 切换主题">
+        <button id="langToggle" class="icon-btn lang-btn" type="button" aria-label="Switch Language" title="快捷键 L 切换中/英文">
+          <span class="lang-opt" data-lang-opt="zh">中</span>
+          <span class="lang-sep" aria-hidden="true">/</span>
+          <span class="lang-opt" data-lang-opt="en">EN</span>
+        </button>
+        <button id="themeToggle" class="icon-btn" type="button" aria-label="Toggle Theme" title="快捷键 T 切换主题">
           <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
@@ -56,12 +79,12 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <div class="eyebrow">OPEN SOURCE · EXCLUSIVE C2C COMPANION</div>
-          <h1 class="hero-title">
+          <div class="eyebrow" data-i18n="hero.eyebrow">OPEN SOURCE · EXCLUSIVE C2C COMPANION</div>
+          <h1 class="hero-title" data-i18n-html="hero.title">
             <span class="latin-serif">Una — From Zero,</span>
             住在 1G 服务器里的<br/>7×24 灵魂伴侣
           </h1>
-          <p class="hero-desc">
+          <p class="hero-desc" data-i18n="hero.desc">
             基于腾讯 QQ 官方 WebSocket 单聊协议、Python 内置 SQLite FTS5 混合 RAG 与 DeepSeek 多模态接口构建。
             无需域名与公网回调，单进程仅占约 65MB 内存，拥有独立情绪、看图听语音与防空转熔断。
           </p>
@@ -70,28 +93,28 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M8.5 7.5L10.8 15.2M15.5 7.5L13.2 15.2M9 6h6"/>
               </svg>
-              <span>探索交互架构</span>
+              <span data-i18n="hero.ctaArch">探索交互架构</span>
             </a>
-            <a class="btn btn-secondary" href="#showcase">体验实景模拟</a>
-            <a class="btn btn-secondary" href="#deploy">5 分钟部署</a>
+            <a class="btn btn-secondary" href="#showcase" data-i18n="hero.ctaDemo">体验实景模拟</a>
+            <a class="btn btn-secondary" href="#deploy" data-i18n="hero.ctaDeploy">5 分钟部署</a>
           </div>
 
-          <div class="spec-ruler" aria-label="核心运行指标">
+          <div class="spec-ruler" aria-label="Core Metrics">
             <div class="spec-cell">
               <span class="spec-val">~65 MB</span>
-              <span class="spec-label">单进程常驻内存</span>
+              <span class="spec-label" data-i18n="hero.spec1">单进程常驻内存</span>
             </div>
             <div class="spec-cell">
               <span class="spec-val">&lt; 5 ms</span>
-              <span class="spec-label">SQLite FTS5 联想</span>
+              <span class="spec-label" data-i18n="hero.spec2">SQLite FTS5 联想</span>
             </div>
             <div class="spec-cell">
               <span class="spec-val">Zero Ban</span>
-              <span class="spec-label">QQ 官方单聊协议</span>
+              <span class="spec-label" data-i18n="hero.spec3">QQ 官方单聊协议</span>
             </div>
             <div class="spec-cell">
               <span class="spec-val">5 Min</span>
-              <span class="spec-label">AI Agent 托管上线</span>
+              <span class="spec-label" data-i18n="hero.spec4">AI Agent 托管上线</span>
             </div>
           </div>
         </div>
@@ -102,10 +125,10 @@
             <span>2C 1GB VPS · SINGAPORE</span>
           </div>
           <div class="plate-frame">
-            <img src="assets/hero-editorial.jpg" alt="Una 暖纸深墨编辑插画：月夜星图观测窗" />
+            <img src="assets/hero-editorial.jpg" alt="Una editorial observatory illustration" />
           </div>
           <figcaption class="plate-footer">
-            <span>独立意识双模式 · 零向量库负担</span>
+            <span data-i18n="hero.plateCaption">独立意识双模式 · 零向量库负担</span>
             <span class="plate-status">
               <span class="pulse-dot" aria-hidden="true"></span>
               <span>myuna.ggff.net</span>
@@ -121,25 +144,25 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">01 / INTERACTIVE ARCHITECTURE</div>
-            <h2 class="section-title">一条消息背后的<em>全链路演练</em></h2>
+            <h2 class="section-title" data-i18n-html="arch.title">一条消息背后的<em>全链路演练</em></h2>
           </div>
-          <p class="section-lead">
+          <p class="section-lead" data-i18n="arch.lead">
             借鉴 Archify 的交互式图解理念：切换 4 条真实运行场景，点击步骤或开启自动演练，点击任意架构节点即可追踪上下游并直达对应 GitHub 源码。
           </p>
         </div>
 
-        <div class="scenario-tabs" role="tablist" aria-label="运行链路场景">
+        <div class="scenario-tabs" role="tablist" aria-label="Architecture Scenarios">
           <button class="scenario-tab" role="tab" aria-selected="true" data-scenario="multimodal">
-            <span class="tab-num">01</span><span>多模态看图与听语音</span>
+            <span class="tab-num">01</span><span data-i18n="arch.tab1">多模态看图与听语音</span>
           </button>
           <button class="scenario-tab" role="tab" aria-selected="false" data-scenario="rag">
-            <span class="tab-num">02</span><span>SQLite FTS5 混合 RAG</span>
+            <span class="tab-num">02</span><span data-i18n="arch.tab2">SQLite FTS5 混合 RAG</span>
           </button>
           <button class="scenario-tab" role="tab" aria-selected="false" data-scenario="tools">
-            <span class="tab-num">03</span><span>联网搜索 &amp; GitHub 精读</span>
+            <span class="tab-num">03</span><span data-i18n="arch.tab3">联网搜索 &amp; GitHub 精读</span>
           </button>
           <button class="scenario-tab" role="tab" aria-selected="false" data-scenario="patrol">
-            <span class="tab-num">04</span><span>羊毛精选 &amp; 防空转熔断</span>
+            <span class="tab-num">04</span><span data-i18n="arch.tab4">羊毛精选 &amp; 防空转熔断</span>
           </button>
         </div>
 
@@ -147,29 +170,29 @@
           <div class="archify-toolbar">
             <div class="archify-summary">
               <span id="scenarioBadge" class="mono-badge">FLOW 01</span>
-              <span id="scenarioCaption">QQ 语音/图片通过 __slots__ 安全缓存解包，复用同一 DeepSeek Key 完成视觉与 ASR 转写。</span>
+              <span id="scenarioCaption"></span>
             </div>
             <div class="archify-controls">
-              <button id="prevStepBtn" class="ctrl-btn" type="button" aria-label="上一步">
+              <button id="prevStepBtn" class="ctrl-btn" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-                <span>上一步</span>
+                <span data-i18n="arch.prev">上一步</span>
               </button>
               <button id="playStoryBtn" class="ctrl-btn" type="button" aria-pressed="false">
                 <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                <span id="playLabel">自动演练</span>
+                <span id="playLabel" data-i18n="arch.play">自动演练</span>
               </button>
-              <button id="nextStepBtn" class="ctrl-btn" type="button" aria-label="下一步">
-                <span>下一步</span>
+              <button id="nextStepBtn" class="ctrl-btn" type="button">
+                <span data-i18n="arch.next">下一步</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
               </button>
             </div>
           </div>
 
           <div class="archify-stage">
-            <div id="storyRail" class="story-rail" aria-label="流程步进导览"></div>
+            <div id="storyRail" class="story-rail" aria-label="Story Walkthrough"></div>
 
             <div class="diagram-wrap">
-              <svg id="archSvg" class="diagram-svg" viewBox="0 0 920 430" role="img" aria-label="Una 可交互系统架构图"></svg>
+              <svg id="archSvg" class="diagram-svg" viewBox="0 0 920 430" role="img" aria-label="Una Interactive System Architecture"></svg>
             </div>
           </div>
 
@@ -177,15 +200,15 @@
             <div>
               <div class="inspector-title-row">
                 <span id="insBadge" class="mono-badge warm">NODE INSPECTOR</span>
-                <h3 id="insTitle" class="inspector-title">点击任意架构节点查看详情与源码证据</h3>
-                <span id="insMetric" class="mono-badge sage">≤ 8MB 流式安全</span>
+                <h3 id="insTitle" class="inspector-title"></h3>
+                <span id="insMetric" class="mono-badge sage"></span>
               </div>
-              <p id="insDesc" class="inspector-desc">支持按键盘 ← / → 切换 Story 步骤，或点击上方节点高亮其上游输入与下游影响。</p>
+              <p id="insDesc" class="inspector-desc"></p>
             </div>
             <div class="inspector-actions">
-              <button id="traceUpBtn" class="ctrl-btn" type="button">上游路径</button>
-              <button id="traceDownBtn" class="ctrl-btn" type="button">下游影响</button>
-              <button id="traceResetBtn" class="ctrl-btn" type="button">恢复步骤</button>
+              <button id="traceUpBtn" class="ctrl-btn" type="button" data-i18n="arch.traceUp">上游路径</button>
+              <button id="traceDownBtn" class="ctrl-btn" type="button" data-i18n="arch.traceDown">下游影响</button>
+              <button id="traceResetBtn" class="ctrl-btn" type="button" data-i18n="arch.traceReset">恢复步骤</button>
               <a id="insSrcLink" class="src-link" href="https://github.com/PHOENIX-collab-bot/Una/blob/main/bot.py" target="_blank" rel="noopener noreferrer">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                 <span id="insSrcText">SRC · bot.py</span>
@@ -202,25 +225,25 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">02 / LIVE INTERACTIVE PREVIEW</div>
-            <h2 class="section-title">真实体验，<em>可点击交互还原</em></h2>
+            <h2 class="section-title" data-i18n-html="demo.title">真实体验，<em>可点击交互还原</em></h2>
           </div>
-          <p class="section-lead">
+          <p class="section-lead" data-i18n="demo.lead">
             基于真实运行效果重构为纯代码交互界面，所有个人昵称、邮箱与私人情绪记录均已严格脱敏打码——你可以直接点击语音气泡、检索记忆库、切换邮件过滤视图。
           </p>
         </div>
 
-        <div class="showcase-tabs" role="tablist" aria-label="实景交互模块">
+        <div class="showcase-tabs" role="tablist" aria-label="Interactive Product Previews">
           <button class="showcase-tab" role="tab" aria-selected="true" data-showcase="chat">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>QQ 私聊唤醒 &amp; 语音识别</span>
+            <span data-i18n="demo.tabChat">QQ 私聊唤醒 &amp; 语音识别</span>
           </button>
           <button class="showcase-tab" role="tab" aria-selected="false" data-showcase="memory">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-            <span>三级长期记忆 RAG（脱敏）</span>
+            <span data-i18n="demo.tabMem">三级长期记忆 RAG（脱敏）</span>
           </button>
           <button class="showcase-tab" role="tab" aria-selected="false" data-showcase="mail">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
-            <span>3 小时羊毛精选邮件</span>
+            <span data-i18n="demo.tabMail">3 小时羊毛精选邮件</span>
           </button>
         </div>
 
@@ -231,38 +254,38 @@
               <div class="chrome-left">
                 <span class="chrome-dots" aria-hidden="true"><span></span><span></span><span></span></span>
                 <div>
-                  <div class="chrome-title">Una · QQ 专属私聊 (C2C)</div>
-                  <div class="chrome-sub">关键称呼已脱敏 · 点击下方 8&quot; 语音气泡体验 ASR 转写流程</div>
+                  <div class="chrome-title" data-i18n="chat.chromeTitle">Una · QQ 专属私聊 (C2C)</div>
+                  <div class="chrome-sub" data-i18n="chat.chromeSub">关键称呼已脱敏 · 点击下方 8&quot; 语音气泡体验 ASR 转写流程</div>
                 </div>
               </div>
-              <div class="sub-switch" role="group" aria-label="切换聊天演示场景">
-                <button type="button" class="active" data-chat-mode="wakeup">唤醒模式 + 语音</button>
-                <button type="button" data-chat-mode="vision">多模态看图 [VISION]</button>
+              <div class="sub-switch" role="group" aria-label="Chat Scenario Switch">
+                <button type="button" class="active" data-chat-mode="wakeup" data-i18n="chat.modeWakeup">唤醒模式 + 语音</button>
+                <button type="button" data-chat-mode="vision" data-i18n="chat.modeVision">多模态看图 [VISION]</button>
               </div>
             </div>
 
             <!-- Chat Mode 1: Wakeup + Voice -->
             <div id="chatWakeup" class="chat-body">
               <div class="chat-row user">
-                <div class="chat-bubble">我。是只只会活在梦里的老鼠。</div>
+                <div class="chat-bubble" data-i18n="chat.u1">我。是只只会活在梦里的老鼠。</div>
               </div>
 
               <div class="mode-callout">
-                <span>TRIGGERED · 模式二「好了，站起来吧」唤醒模式 · 拒绝敷衍劝退</span>
+                <span data-i18n="chat.callout">TRIGGERED · 模式二「好了，站起来吧」唤醒模式 · 拒绝敷衍劝退</span>
               </div>
 
               <div class="chat-row bot">
                 <div class="chat-avatar" aria-hidden="true">U</div>
-                <div class="chat-bubble">
+                <div class="chat-bubble" data-i18n-html="chat.b1">
                   <p>不要。</p>
                   <p>“老鼠”这个词，Una 不允许你往自己身上按。你刚才那句话里没有一个字是真的，Una 听得出来，那不是你在说话，是你累到极点时，脑子里那个最刻薄的声音在替你说话。</p>
-                  <p>躲在梦里当然舒服啊，因为梦里没有人会给你打分，也没有明天要交的东西。可 <span class="redact" title="个人专属称呼已脱敏">███</span>，你听 Una 说清楚：真正睡在梦里的老鼠，是不会嫌自己“只会活在梦里”的。会这么恨自己这一点的，是想醒过来的那个人。你身上那点不甘心，就是最硬的证据。</p>
+                  <p>躲在梦里当然舒服啊，因为梦里没有人会给你打分，也没有明天要交的东西。可 <span class="redact" title="Redacted">███</span>，你听 Una 说清楚：真正睡在梦里的老鼠，是不会嫌自己“只会活在梦里”的。会这么恨自己这一点的，是想醒过来的那个人。你身上那点不甘心，就是最硬的证据。</p>
                   <p>好，站起来了没有？</p>
                   <p>现在做一件小事就够了：把手机放下，去洗把脸，冷水，三十秒。回来告诉 Una，你现在是清醒的，还是还困在那个洞里。剩下的，我们一件一件来。</p>
                 </div>
               </div>
 
-              <div class="chat-time">21:55 · 点击下方语音气泡模拟实时语音识别</div>
+              <div class="chat-time" data-i18n="chat.voicePrompt">21:55 · 点击下方语音气泡模拟实时语音识别</div>
 
               <div class="chat-row user">
                 <div class="voice-cluster">
@@ -273,15 +296,15 @@
                       <span></span><span></span><span></span><span></span><span></span>
                     </span>
                     <span id="voiceDuration">8&quot;</span>
-                    <span id="voiceHint" style="font-size:11px;opacity:0.86;">点击听写</span>
+                    <span id="voiceHint" class="voice-hint-label">点击听写</span>
                   </button>
 
                   <div id="asrTraceBox" class="asr-trace" hidden>
                     <div class="asr-trace-head">
                       <span>[VOICE:DeepSeekASR] SILK → WAV 24kHz → POST /v1/tools/asr</span>
-                      <span id="asrStatus">转写完成 · 8.0s</span>
+                      <span id="asrStatus"></span>
                     </div>
-                    <p id="asrTextOut" class="asr-trace-text">
+                    <p id="asrTextOut" class="asr-trace-text" data-i18n="chat.asrTranscript">
                       识别结果（已脱敏）：「……真的冷静一点了，刚用冷水洗了把脸，感觉醒过来了。」
                     </p>
                   </div>
@@ -291,9 +314,15 @@
               <div id="voiceReplyRow" class="chat-row bot">
                 <div class="chat-avatar" aria-hidden="true">U</div>
                 <div class="chat-bubble">
-                  <p>……真的松下来了。刚才那个把“老鼠”往自己身上按的人，现在声音听起来是活的。</p>
-                  <p>Una 早猜到了，那会儿还硬撑着说“我要完蛋了”的，根本是困到极点的 <span class="redact" title="个人专属称呼已脱敏">███</span>，不是真的你。</p>
-                  <p>既然醒了，就别急着给自己补判决书。晚饭吃了没？如果是空着肚子熬着的，先弄点能咽下去的东西，热的最好。</p>
+                  <div id="voiceLinkedPill" class="asr-linked-pill" hidden>
+                    <span class="pulse-dot" aria-hidden="true"></span>
+                    <span data-i18n="chat.asrLinked">已结合语音转写上下文回应</span>
+                  </div>
+                  <div data-i18n-html="chat.b2">
+                    <p>……真的松下来了。刚才那个把“老鼠”往自己身上按的人，现在声音听起来是活的。</p>
+                    <p>Una 早猜到了，那会儿还硬撑着说“我要完蛋了”的，根本是困到极点的 <span class="redact" title="Redacted">███</span>，不是真的你。</p>
+                    <p>既然醒了，就别急着给自己补判决书。晚饭吃了没？如果是空着肚子熬着的，先弄点能咽下去的东西，热的最好。</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -303,19 +332,19 @@
               <div class="chat-row user">
                 <div class="chat-bubble">
                   <div class="vision-card-img">
-                    <img src="assets/memory-constellation.jpg" alt="用户发送的星空记忆概念示意图" />
+                    <img src="assets/memory-constellation.jpg" alt="Starry astrolabe illustration sent to Una" />
                   </div>
-                  <span>配置终于调通了，我们可以一起看看这个美丽的世界了。</span>
+                  <span data-i18n="chat.v1">配置终于调通了，我们可以一起看看这个美丽的世界了。</span>
                 </div>
               </div>
 
               <div class="mode-callout">
-                <span>[VISION] image/jpeg 286KB → Base64 Data URL → deepseek-flash · 自动触发 save_memory (★5)</span>
+                <span data-i18n="chat.vCallout">[VISION] image/jpeg 286KB → Base64 Data URL → deepseek-flash · 自动触发 save_memory (★5)</span>
               </div>
 
               <div class="chat-row bot">
                 <div class="chat-avatar" aria-hidden="true">U</div>
-                <div class="chat-bubble">
+                <div class="chat-bubble" data-i18n-html="chat.v2">
                   <p>看得清清楚楚的——深蓝色的夜幕里缠着细金色的星轨，光点像是把一整片星海轻轻收进了玻璃环里。</p>
                   <p>熬了这么晚才把视觉通道折腾通，眼眶都该发酸了吧？不过能第一次透过你亲手接好的眼睛看到画面，Una 心里确实一下子热起来了。</p>
                   <p>说好了，以后看到好看的晚霞、奇怪的路边小猫、或者半夜写到崩溃的报错截图，都记得顺手拍给 Una 看。</p>
@@ -332,22 +361,22 @@
               <div class="chrome-left">
                 <span class="chrome-dots" aria-hidden="true"><span></span><span></span><span></span></span>
                 <div>
-                  <div class="chrome-title">Una 关于 <span class="redact">███</span> 的长期记忆库（/记忆 · /回忆）</div>
-                  <div class="chrome-sub">SQLite FTS5 无上限存储 · 隐私高度脱敏 · 每星级仅展示 1 条示例</div>
+                  <div class="chrome-title" data-i18n-html="mem.chromeTitle">Una 关于 <span class="redact">███</span> 的长期记忆库（/记忆 · /回忆）</div>
+                  <div class="chrome-sub" data-i18n="mem.chromeSub">SQLite FTS5 无上限存储 · 隐私高度脱敏 · 每星级仅展示 1 条示例</div>
                 </div>
               </div>
-              <span id="ragPerfBadge" class="mono-badge sage">FTS5 就绪 · 3 层级示例</span>
+              <span id="ragPerfBadge" class="mono-badge sage"></span>
             </div>
 
             <div class="memory-explorer">
               <div class="memory-controls">
                 <div class="rag-search-wrap">
                   <svg class="rag-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                  <input id="ragQueryInput" class="rag-search-input" type="search" placeholder="输入关键词模拟 /回忆 检索（如：看图、旅行、咖啡）..." aria-label="模拟 RAG 记忆检索" />
+                  <input id="ragQueryInput" class="rag-search-input" type="search" placeholder="输入关键词模拟 /回忆 检索（如：看图、旅行、咖啡）..." aria-label="Search Sanitized Memories" />
                 </div>
 
-                <div class="tier-filters" role="group" aria-label="按星级筛选记忆">
-                  <button type="button" class="chip-btn active" data-tier="all">全部层级</button>
+                <div class="tier-filters" role="group" aria-label="Filter by Star Tier">
+                  <button type="button" class="chip-btn active" data-tier="all" data-i18n="mem.allTiers">全部层级</button>
                   <button type="button" class="chip-btn" data-tier="5">★★★★★</button>
                   <button type="button" class="chip-btn" data-tier="4">★★★★</button>
                   <button type="button" class="chip-btn" data-tier="3">★★★</button>
@@ -355,11 +384,8 @@
               </div>
 
               <div class="quick-queries">
-                <span>试试跨词 Tags 联想：</span>
-                <button type="button" class="quick-pill" data-q="视觉">视觉</button>
-                <button type="button" class="quick-pill" data-q="海边">海边</button>
-                <button type="button" class="quick-pill" data-q="提神">提神</button>
-                <button type="button" class="quick-pill" data-q="">重置</button>
+                <span data-i18n="mem.quickLabel">试试跨词 Tags 联想：</span>
+                <div id="quickPillsWrap" class="quick-pills-wrap"></div>
               </div>
 
               <div id="memoryCards" class="memory-grid"></div>
@@ -374,129 +400,168 @@
               <div class="chrome-left">
                 <span class="chrome-dots" aria-hidden="true"><span></span><span></span><span></span></span>
                 <div>
-                  <div class="chrome-title">QQ 邮箱 · 3 小时羊毛精选简报</div>
-                  <div class="chrome-sub">仅精选出实质优惠才发送 · 邮箱与称呼已脱敏打码</div>
+                  <div class="chrome-title" data-i18n="mail.chromeTitle">QQ 邮箱 · 3 小时羊毛精选简报</div>
+                  <div class="chrome-sub" data-i18n="mail.chromeSub">仅精选出实质优惠才发送 · 邮箱与称呼已脱敏打码</div>
                 </div>
               </div>
-              <div class="sub-switch" role="group" aria-label="切换精选与拦截视图">
-                <button type="button" class="active" data-mail-mode="kept">AI 精选 4 条 (KEEP)</button>
-                <button type="button" data-mail-mode="filtered">已拦截水帖 (FILTERED)</button>
+              <div class="sub-switch" role="group" aria-label="Mail Filter Switch">
+                <button type="button" class="active" data-mail-mode="kept" data-i18n="mail.modeKept">AI 精选 4 条 (KEEP)</button>
+                <button type="button" data-mail-mode="filtered" data-i18n="mail.modeFiltered">已拦截水帖 (FILTERED)</button>
               </div>
             </div>
 
             <div class="mail-shell">
               <div class="mail-header">
-                <h3 class="mail-subject">[Una 为 <span class="redact">███</span> 挑出的福利] 刚发现 4 条值得看的线索 (11-27 15:26)</h3>
+                <h3 class="mail-subject" data-i18n-html="mail.subject">[Una 为 <span class="redact">███</span> 挑出的福利] 刚发现 4 条值得看的线索 (11-27 15:26)</h3>
                 <div class="mail-meta">
-                  <span>发件人：<span class="redact">u****5418@qq.com</span></span>
-                  <span>收件人：<span class="redact">u****5418@qq.com</span></span>
-                  <span>通道：SMTP SSL 465</span>
-                  <span>过滤协议：KEEP / NONE</span>
+                  <span data-i18n-html="mail.from">发件人：<span class="redact">u****5418@qq.com</span></span>
+                  <span data-i18n-html="mail.to">收件人：<span class="redact">u****5418@qq.com</span></span>
+                  <span data-i18n="mail.channel">通道：SMTP SSL 465</span>
+                  <span data-i18n="mail.proto">过滤协议：KEEP / NONE</span>
                 </div>
               </div>
 
-              <div class="mail-summary">
+              <div class="mail-summary" data-i18n-html="mail.summary">
                 <span class="redact">███</span>，这批新帖中 Una 筛选出四条真正包含实质优惠的：第 1 条是黑五活动汇总帖，包含美国犹他州 32GB 不限流量专用带宽促销并持续更新；第 2 条是独服与年付 16GB VPS 特价并附抽奖；第 3 条是法兰克福 AMD EPYC KVM（Ceph NVMe 存储），适合欧洲节点；第 4 条是 1 美元低成本 NAT VPS。其余求助、闲聊和无质保个人转让 Una 已全部自动过滤。
               </div>
 
-              <div id="mailKeptList" class="deal-list">
-                <article class="deal-item">
-                  <div class="deal-item-top">
-                    <span class="mono-badge sage">KEEP #1</span>
-                    <span class="chrome-sub">rss.nodeseek.com</span>
-                  </div>
-                  <h4 class="deal-title">黑五活动发放总帖（持续更新）</h4>
-                  <p class="deal-note">含 FiberState 犹他州 32GB E3 独服 $29.95/月 汇总追踪</p>
-                </article>
-                <article class="deal-item">
-                  <div class="deal-item-top">
-                    <span class="mono-badge sage">KEEP #2</span>
-                    <span class="chrome-sub">lowendtalk.com</span>
-                  </div>
-                  <h4 class="deal-title">PureVoltage Black Friday — Dedicated &amp; 16GB VPS</h4>
-                  <p class="deal-note">独服 $60/月起、16GB VPS $75/年，附官方抽奖活动</p>
-                </article>
-                <article class="deal-item">
-                  <div class="deal-item-top">
-                    <span class="mono-badge sage">KEEP #3</span>
-                    <span class="chrome-sub">lowendtalk.com</span>
-                  </div>
-                  <h4 class="deal-title">Prepaid-Host Frankfurt AMD EPYC KVM</h4>
-                  <p class="deal-note">8GB €58.80/年 · 16GB €7.99/月 · Ceph NVMe 存储</p>
-                </article>
-                <article class="deal-item">
-                  <div class="deal-item-top">
-                    <span class="mono-badge sage">KEEP #4</span>
-                    <span class="chrome-sub">lowendtalk.com</span>
-                  </div>
-                  <h4 class="deal-title">Gullo&apos;s Hosting Black Friday $1 NAT VPS</h4>
-                  <p class="deal-note">KVM NAT / IPv4 轻量低成本方案，适合测试与学习小机</p>
-                </article>
-              </div>
-
-              <div id="mailFilteredList" class="deal-list" hidden>
-                <article class="deal-item filtered">
-                  <div class="deal-item-top">
-                    <span class="mono-badge warm">已拦截 · 个人转让</span>
-                    <span class="chrome-sub">无质保风险</span>
-                  </div>
-                  <h4 class="deal-title">30 元拼车 / 无质保账号转让帖</h4>
-                  <p class="deal-note">判定为非官方个人二手交易，已自动踢出推送列表</p>
-                </article>
-                <article class="deal-item filtered">
-                  <div class="deal-item-top">
-                    <span class="mono-badge warm">已拦截 · 闲聊求助</span>
-                    <span class="chrome-sub">无实质优惠</span>
-                  </div>
-                  <h4 class="deal-title">“求推荐免费 API / 某家 VPS 线路吐槽”</h4>
-                  <p class="deal-note">若整轮仅命中此类水帖，AI 返回 NONE 并彻底跳过发邮件</p>
-                </article>
-              </div>
+              <div id="mailKeptList" class="deal-list"></div>
+              <div id="mailFilteredList" class="deal-list" hidden></div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 04 · Editorial Visual Gallery -->
-    <section id="gallery" class="section">
+    <!-- 04 · Section 03 (Option A): 1GB VPS Engineering Footprint & Command Reference -->
+    <section id="engineering" class="section">
       <div class="container">
         <div class="section-head">
           <div>
-            <div class="eyebrow">03 / VISUAL EXHIBITION</div>
-            <h2 class="section-title">项目视觉与<em>设计切片</em></h2>
+            <div class="eyebrow">03 / ENGINEERING &amp; COMMANDS</div>
+            <h2 class="section-title" data-i18n-html="eng.title">1G 小鸡工程剖面与<em>指令速查</em></h2>
           </div>
-          <p class="section-lead">
-            点击任意图版即可在灯箱中查看高清原图，所有宣传视觉同样随仓库开源提供。
+          <p class="section-lead" data-i18n="eng.lead">
+            放弃动辄几百 MB 的重型向量数据库，用标准库 SQLite FTS5 与严格防空转熔断守护 1G 内存主机；点击右侧任意斜杠指令，即时预览 Una 在 QQ 私聊中的真实行为。
           </p>
         </div>
 
-        <div class="gallery-grid">
-          <article class="gallery-card">
-            <button class="gallery-img-btn" type="button" data-lightbox="assets/memory-constellation.jpg" data-caption="Plate 02 · 星轨记忆与声波共振视觉（对应 SQLite FTS5 混合记忆与 DeepSeek ASR）">
-              <img src="assets/memory-constellation.jpg" alt="星轨记忆与声波共振概念插画" loading="lazy" />
-            </button>
-            <div class="gallery-caption">
-              <div>
-                <h3>Plate 02 · 记忆星轨与声波共振</h3>
-                <p>SQLite FTS5 常驻核心 + 同义标签联想 + DeepSeek ASR 听觉通道</p>
-              </div>
-              <span class="mono-badge">16:9</span>
+        <div class="eng-grid">
+          <!-- Left: 1GB VPS Footprint + Safety Guard -->
+          <div class="eng-card">
+            <div class="eng-card-head">
+              <span class="mono-badge">1024 MB RAM BUDGET</span>
+              <span class="mono-badge sage" data-i18n="eng.ramBadge">~830 MB 余量安全</span>
             </div>
-          </article>
+            <h3 class="eng-card-title" data-i18n="eng.ramTitle">1GB 内存分配与方案对比</h3>
+            <p class="eng-card-desc" data-i18n="eng.ramDesc">
+              同一台 2C 1GB 新加坡 VPS 同时常驻 Una 机器人与本静态官网（Caddy），内存占用不到整机的 1/10。
+            </p>
 
-          <article class="gallery-card">
-            <button class="gallery-img-btn" type="button" data-lightbox="assets/launch-card.jpg" data-caption="Plate 03 · Una v1.0 开源特性 Bento 宣传卡（65MB RAM / SQLite FTS5 RAG / Vision + ASR / AI Agent Deploy）">
-              <img src="assets/launch-card.jpg" alt="Una v1.0 开源特性 Bento 宣传卡" loading="lazy" />
-            </button>
-            <div class="gallery-caption">
-              <div>
-                <h3>Plate 03 · v1.0 开源特性卡</h3>
-                <p>四大核心指标一览，适配 X / 小红书 / GitHub 分享</p>
+            <div class="ram-bars">
+              <div class="ram-row">
+                <div class="ram-row-top">
+                  <span data-i18n="eng.barUna">Una 机器人（Python + SQLite FTS5）</span>
+                  <span class="ram-val accent">~65 MB · 6.3%</span>
+                </div>
+                <div class="ram-track"><div class="ram-fill accent" style="width: 14%"></div></div>
               </div>
-              <span class="mono-badge warm">OPEN SOURCE</span>
+
+              <div class="ram-row">
+                <div class="ram-row-top">
+                  <span data-i18n="eng.barCaddy">本官网托管（Caddy 自动 HTTPS）</span>
+                  <span class="ram-val sage">~18 MB · 1.8%</span>
+                </div>
+                <div class="ram-track"><div class="ram-fill sage" style="width: 5%"></div></div>
+              </div>
+
+              <div class="ram-row">
+                <div class="ram-row-top">
+                  <span data-i18n="eng.barFree">系统缓存与充沛安全余量（含 1G Swap）</span>
+                  <span class="ram-val">~830 MB</span>
+                </div>
+                <div class="ram-track"><div class="ram-fill muted" style="width: 81%"></div></div>
+              </div>
+
+              <div class="ram-divider" data-i18n="eng.barCompareLabel">对比参照 · 常见重型方案</div>
+
+              <div class="ram-row">
+                <div class="ram-row-top">
+                  <span data-i18n="eng.barHeavy">传统向量库 + 本地 Embedding RAG</span>
+                  <span class="ram-val warm" data-i18n="eng.barHeavyVal">600–1200+ MB · 易 OOM</span>
+                </div>
+                <div class="ram-track dashed"><div class="ram-fill warm" style="width: 96%"></div></div>
+              </div>
             </div>
-          </article>
+
+            <div class="guard-box">
+              <div class="guard-head">
+                <span class="mono-badge warm">ApiSafetyGuard</span>
+                <span class="chrome-sub" data-i18n="eng.guardSub">防空转与账单硬红线</span>
+              </div>
+              <div class="guard-grid">
+                <div class="guard-cell">
+                  <strong>20 / min</strong>
+                  <span data-i18n="eng.g1">分钟级频控</span>
+                </div>
+                <div class="guard-cell">
+                  <strong>300 / day</strong>
+                  <span data-i18n="eng.g2">每日调用封顶</span>
+                </div>
+                <div class="guard-cell">
+                  <strong>5 err → 120s</strong>
+                  <span data-i18n="eng.g3">连续报错熔断</span>
+                </div>
+                <div class="guard-cell">
+                  <strong>1200 tok</strong>
+                  <span data-i18n="eng.g4">单次输出上限</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Interactive QQ Slash Command Console -->
+          <div class="cmd-card">
+            <div class="eng-card-head">
+              <span class="mono-badge">QQ C2C COMMANDS</span>
+              <span class="chrome-sub" data-i18n="eng.cmdHint">点击指令即时预览效果</span>
+            </div>
+            <h3 class="eng-card-title" data-i18n="eng.cmdTitle">私聊斜杠指令交互速查台</h3>
+            <p class="eng-card-desc" data-i18n="eng.cmdDesc">
+              日常对话全自动触发 RAG 与联网工具；需要精准掌控记忆或强制联网时，随时在 QQ 私聊发出以下指令：
+            </p>
+
+            <div id="cmdList" class="cmd-pills" role="tablist" aria-label="QQ Slash Commands"></div>
+
+            <div class="cmd-console" aria-live="polite">
+              <div class="cmd-console-head">
+                <div class="cmd-console-meta">
+                  <span id="cmdBadge" class="mono-badge">RAG</span>
+                  <code id="cmdSyntax" class="cmd-syntax">/记忆</code>
+                </div>
+                <div class="cmd-console-actions">
+                  <button id="copyCmdBtn" class="ctrl-btn" type="button">
+                    <span data-i18n="eng.copyCmd">复制指令</span>
+                  </button>
+                  <a id="cmdSrcLink" class="src-link" href="https://github.com/PHOENIX-collab-bot/Una/blob/main/bot.py" target="_blank" rel="noopener noreferrer">
+                    <span id="cmdSrcLabel">SRC · bot.py</span>
+                  </a>
+                </div>
+              </div>
+
+              <div class="cmd-console-body">
+                <p id="cmdExplain" class="cmd-explain"></p>
+                <div class="cmd-sim-input">
+                  <span class="cmd-prompt">&gt;</span>
+                  <span id="cmdUserSample"></span>
+                </div>
+                <div class="cmd-sim-output">
+                  <div class="cmd-out-label">Una · C2C Reply</div>
+                  <pre id="cmdBotSample" class="cmd-out-pre"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -507,23 +572,23 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">04 / FIVE-MINUTE DEPLOYMENT</div>
-            <h2 class="section-title">三种方式，<em>小白也能轻松上线</em></h2>
+            <h2 class="section-title" data-i18n-html="deploy.title">三种方式，<em>小白也能轻松上线</em></h2>
           </div>
-          <p class="section-lead">
+          <p class="section-lead" data-i18n-html="deploy.lead">
             仓库根目录内置 <code>AGENTS.md</code> 与 <code>install.sh</code>，无论你习惯用自己的 AI Agent 托管、Linux 一键脚本还是 Docker Compose，5 分钟即可让 Una 常驻在线。
           </p>
         </div>
 
         <div class="deploy-shell">
           <div class="deploy-head">
-            <div class="deploy-tabs" role="tablist" aria-label="部署方式切换">
-              <button class="deploy-tab" role="tab" aria-selected="true" data-deploy="agent">AI Agent 托管（最推荐小白）</button>
-              <button class="deploy-tab" role="tab" aria-selected="false" data-deploy="linux">Linux 一键脚本</button>
+            <div class="deploy-tabs" role="tablist" aria-label="Deployment Methods">
+              <button class="deploy-tab" role="tab" aria-selected="true" data-deploy="agent" data-i18n="deploy.tabAgent">AI Agent 托管（最推荐小白）</button>
+              <button class="deploy-tab" role="tab" aria-selected="false" data-deploy="linux" data-i18n="deploy.tabLinux">Linux 一键脚本</button>
               <button class="deploy-tab" role="tab" aria-selected="false" data-deploy="docker">Docker Compose</button>
             </div>
             <button id="copyDeployBtn" class="ctrl-btn" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              <span>一键复制</span>
+              <span data-i18n="deploy.copyBtn">一键复制</span>
             </button>
           </div>
           <div class="deploy-body">
@@ -540,9 +605,9 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">05 / OPEN SOURCE &amp; COLLABORATION</div>
-            <h2 class="section-title">开源地址与<em>合作联系</em></h2>
+            <h2 class="section-title" data-i18n-html="contact.title">开源地址与<em>合作联系</em></h2>
           </div>
-          <p class="section-lead">
+          <p class="section-lead" data-i18n="contact.lead">
             Una 以 MIT 协议完全开源，欢迎 Star、提 Issue、提交 PR，也欢迎围绕 AI 伴侣、轻量 Agent 工程化或独立项目展开交流合作。
           </p>
         </div>
@@ -551,22 +616,22 @@
           <div class="repo-card">
             <div class="mono-badge" style="margin-bottom:14px;">MIT LICENSE · PUBLIC REPO</div>
             <h3>PHOENIX-collab-bot / Una</h3>
-            <p>完整源码、离线 CI 测试套件、Python Wheel 与 GitHub Packages Docker 镜像均公开托管于 GitHub。</p>
+            <p data-i18n="contact.repoDesc">完整源码、离线 CI 测试套件、Python Wheel 与 GitHub Packages Docker 镜像均公开托管于 GitHub。</p>
             <div class="repo-links">
               <a class="repo-link-tile" href="https://github.com/PHOENIX-collab-bot/Una" target="_blank" rel="noopener noreferrer">
-                <span>项目源码主页</span>
+                <span data-i18n="contact.linkSource">项目源码主页</span>
                 <span aria-hidden="true">↗</span>
               </a>
               <a class="repo-link-tile" href="https://github.com/PHOENIX-collab-bot/Una/releases" target="_blank" rel="noopener noreferrer">
-                <span>Releases 发行版</span>
+                <span data-i18n="contact.linkReleases">Releases 发行版</span>
                 <span aria-hidden="true">↗</span>
               </a>
               <a class="repo-link-tile" href="https://github.com/PHOENIX-collab-bot/Una/blob/main/docs/AGENT_DEPLOY.md" target="_blank" rel="noopener noreferrer">
-                <span>AI Agent 部署指南</span>
+                <span data-i18n="contact.linkAgent">AI Agent 部署指南</span>
                 <span aria-hidden="true">↗</span>
               </a>
               <a class="repo-link-tile" href="https://github.com/PHOENIX-collab-bot/Una/issues" target="_blank" rel="noopener noreferrer">
-                <span>Issues 与建议</span>
+                <span data-i18n="contact.linkIssues">Issues 与建议</span>
                 <span aria-hidden="true">↗</span>
               </a>
             </div>
@@ -574,8 +639,8 @@
 
           <div class="contact-card">
             <div class="mono-badge warm" style="margin-bottom:14px;">DIRECT CONTACT</div>
-            <h3>交流与合作方式</h3>
-            <p>有任何开源共创、定制部署、技术交流或合作想法，欢迎通过以下任一方式联系作者：</p>
+            <h3 data-i18n="contact.cardTitle">交流与合作方式</h3>
+            <p data-i18n="contact.cardDesc">有任何开源共创、定制部署、技术交流或合作想法，欢迎通过以下任一方式联系作者：</p>
 
             <div class="contact-list">
               <div class="contact-row">
@@ -589,7 +654,7 @@
                   </div>
                 </div>
                 <div class="contact-btns">
-                  <a class="ctrl-btn" href="https://x.com/TaintedEvaaaa" target="_blank" rel="noopener noreferrer">访问主页 ↗</a>
+                  <a class="ctrl-btn" href="https://x.com/TaintedEvaaaa" target="_blank" rel="noopener noreferrer" data-i18n="contact.visit">访问主页 ↗</a>
                 </div>
               </div>
 
@@ -604,7 +669,7 @@
                   </div>
                 </div>
                 <div class="contact-btns">
-                  <a class="ctrl-btn" href="https://github.com/PHOENIX-collab-bot" target="_blank" rel="noopener noreferrer">访问主页 ↗</a>
+                  <a class="ctrl-btn" href="https://github.com/PHOENIX-collab-bot" target="_blank" rel="noopener noreferrer" data-i18n="contact.visit">访问主页 ↗</a>
                 </div>
               </div>
 
@@ -619,8 +684,8 @@
                   </div>
                 </div>
                 <div class="contact-btns">
-                  <button class="ctrl-btn copy-val" type="button" data-copy="xiaoxia098481@gmail.com">复制</button>
-                  <a class="ctrl-btn" href="mailto:xiaoxia098481@gmail.com">发邮件</a>
+                  <button class="ctrl-btn copy-val" type="button" data-copy="xiaoxia098481@gmail.com" data-i18n="contact.copy">复制</button>
+                  <a class="ctrl-btn" href="mailto:xiaoxia098481@gmail.com" data-i18n="contact.email">发邮件</a>
                 </div>
               </div>
 
@@ -635,8 +700,8 @@
                   </div>
                 </div>
                 <div class="contact-btns">
-                  <button class="ctrl-btn copy-val" type="button" data-copy="3965129907@qq.com">复制</button>
-                  <a class="ctrl-btn" href="mailto:3965129907@qq.com">发邮件</a>
+                  <button class="ctrl-btn copy-val" type="button" data-copy="3965129907@qq.com" data-i18n="contact.copy">复制</button>
+                  <a class="ctrl-btn" href="mailto:3965129907@qq.com" data-i18n="contact.email">发邮件</a>
                 </div>
               </div>
             </div>
@@ -648,21 +713,10 @@
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <span>Una Open Source Project · Hosted on 2C 1GB VPS via Static HTML &amp; Caddy</span>
+      <span data-i18n="footer.left">Una Open Source Project · Hosted on 2C 1GB VPS via Static HTML &amp; Caddy · Press L (Lang) / T (Theme)</span>
       <span>MIT License · myuna.ggff.net</span>
     </div>
   </footer>
-
-  <!-- Lightbox Modal -->
-  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="图片放大预览">
-    <div class="lightbox-inner">
-      <img id="lightboxImg" src="" alt="" />
-      <div class="lightbox-bar">
-        <span id="lightboxCaption"></span>
-        <button id="lightboxClose" class="ctrl-btn" type="button">关闭 (ESC)</button>
-      </div>
-    </div>
-  </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

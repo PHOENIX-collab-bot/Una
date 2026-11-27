@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1D4D78" />
+      <stop offset="55%" stop-color="#13253D" />
+      <stop offset="100%" stop-color="#0D1420" />
+    </linearGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#F6F3EC" />
+      <stop offset="100%" stop-color="#A8D8FF" />
+    </linearGradient>
+    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E6C28B" />
+      <stop offset="100%" stop-color="#74BDF5" />
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bg)" />
+  <rect x="5.5" y="5.5" width="53" height="53" rx="13" fill="none" stroke="#F6F3EC" stroke-opacity="0.16" stroke-width="1" />
+  <!-- Subtle cradling U-crescent arc symbolizing quiet companionship -->
+  <path d="M 16.5 31 A 15.5 15.5 0 1 0 47.5 31" fill="none" stroke="url(#arc)" stroke-width="2.4" stroke-linecap="round" opacity="0.92" />
+  <!-- Razor-sharp four-point guiding star -->
+  <path d="M 32 14 L 35.1 25.9 L 47 29 L 35.1 32.1 L 32 44 L 28.9 32.1 L 17 29 L 28.9 25.9 Z" fill="url(#star)" />
+  <!-- Companion pinpoint star -->
+  <circle cx="45.5" cy="18.5" r="2.1" fill="#E6C28B" />
+</svg>
