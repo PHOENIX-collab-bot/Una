@@ -1565,19 +1565,88 @@ docker compose logs -f una`,
     .map((link) => document.getElementById(link.dataset.navTarget))
     .filter(Boolean);
 
-  if ("IntersectionObserver" in window && trackedSections.length) {
-    const spy = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (!visible) return;
-        navLinks.forEach((l) => l.classList.toggle("active", l.dataset.navTarget === visible.target.id));
-      },
-      { rootMargin: "-22% 0px -58% 0px", threshold: [0.1, 0.35, 0.6] }
-    );
-    trackedSections.forEach((sec) => spy.observe(sec));
+  let activeNavId = null;
+  let navClickLock = null;
+  let navClickLockTimer = null;
+  let scrollSpyRaf = null;
+
+  function setActiveNav(id) {
+    if (activeNavId === id) return;
+    activeNavId = id;
+    navLinks.forEach((l) => l.classList.toggle("active", l.dataset.navTarget === id));
   }
+
+  function updateActiveNav() {
+    scrollSpyRaf = null;
+    if (!trackedSections.length) return;
+
+    if (navClickLock) {
+      if (Date.now() < navClickLock.until) {
+        setActiveNav(navClickLock.id);
+        return;
+      }
+      navClickLock = null;
+    }
+
+    const navH = 68;
+    const probeLine = navH + Math.min(140, Math.round(window.innerHeight * 0.22));
+    const atBottom =
+      window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8;
+
+    if (atBottom) {
+      setActiveNav(trackedSections[trackedSections.length - 1].id);
+      return;
+    }
+
+    const firstTop = trackedSections[0].getBoundingClientRect().top;
+    if (firstTop > Math.max(probeLine, window.innerHeight * 0.45)) {
+      setActiveNav(null);
+      return;
+    }
+
+    let currentId = trackedSections[0].id;
+    for (const sec of trackedSections) {
+      if (sec.getBoundingClientRect().top <= probeLine) {
+        currentId = sec.id;
+      } else {
+        break;
+      }
+    }
+    setActiveNav(currentId);
+  }
+
+  function scheduleScrollSpy() {
+    if (scrollSpyRaf !== null) return;
+    scrollSpyRaf = requestAnimationFrame(updateActiveNav);
+  }
+
+  navLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      const targetId = link.dataset.navTarget;
+      navClickLock = { id: targetId, until: Date.now() + 900 };
+      setActiveNav(targetId);
+      clearTimeout(navClickLockTimer);
+      navClickLockTimer = setTimeout(updateActiveNav, 950);
+    });
+  });
+
+  ["wheel", "touchstart"].forEach((ev) => {
+    window.addEventListener(
+      ev,
+      () => {
+        if (navClickLock) {
+          navClickLock = null;
+          scheduleScrollSpy();
+        }
+      },
+      { passive: true }
+    );
+  });
+
+  window.addEventListener("scroll", scheduleScrollSpy, { passive: true });
+  window.addEventListener("resize", scheduleScrollSpy, { passive: true });
+  window.addEventListener("hashchange", scheduleScrollSpy);
+  updateActiveNav();
 
   document.addEventListener("keydown", (e) => {
     const tag = (document.activeElement?.tagName || "").toLowerCase();
