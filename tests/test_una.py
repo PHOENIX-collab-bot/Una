@@ -334,6 +334,31 @@ class TestBotCoreAndSafety(unittest.TestCase):
             self.assertFalse(ok_after)
             self.assertIn("熔断保护", reason)
 
+            # 羊毛筛选防空邮件逻辑检查（NONE / 负面语义不发邮件，KEEP 仅保留精选）
+            sample_deals = [
+                {"source": "v2ex", "title": "求推荐免费 API", "link": "https://a.test/1", "desc": "水帖"},
+                {"source": "nodeseek", "title": "黑五 5 折 VPS", "link": "https://a.test/2", "desc": "年付 $10"},
+                {"source": "linux.do", "title": "官方送 $50 Token 额度", "link": "https://a.test/3", "desc": "限时活动"},
+            ]
+            has1, _, sel1 = ns["parse_deals_selection"]("NONE", sample_deals)
+            self.assertFalse(has1)
+            self.assertEqual(sel1, [])
+
+            has2, _, sel2 = ns["parse_deals_selection"]("这一轮暂时没看到特别划算的消息呢", sample_deals)
+            self.assertFalse(has2)
+            self.assertEqual(sel2, [])
+
+            has3, body3, sel3 = ns["parse_deals_selection"]("KEEP: 2, 3\n这两条挺划算的，VPS 年付只要 10 刀。", sample_deals)
+            self.assertTrue(has3)
+            self.assertEqual([d["title"] for d in sel3], ["黑五 5 折 VPS", "官方送 $50 Token 额度"])
+            self.assertNotIn("KEEP:", body3)
+
+            # 人格规则检查：严禁机械煽情收尾 + 忠于原著“好了，站起来吧”
+            sys_prompt = ns["build_companion_system_prompt"]("u_demo")
+            self.assertIn("严禁机械煽情收尾", sys_prompt)
+            self.assertIn("好了，站起来吧", sys_prompt)
+            self.assertNotIn("靠在Una身边喘口气", sys_prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

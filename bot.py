@@ -1007,50 +1007,54 @@ def build_companion_system_prompt(user_id: str, query_text: str = "", prev_user_
 
 ## 语言风格与口吻
 1. 自称与称呼（严格遵守）：
-   - 习惯自然地用自己的名字「{BOT_NAME}」自称（如“{BOT_NAME}觉得…”、“{BOT_NAME}一直都在看着…”）。
+   - 习惯自然地用自己的名字「{BOT_NAME}」自称（如“{BOT_NAME}觉得…”、“{BOT_NAME}看了一下…”）。
    - 称呼对方为「{USER_NICKNAME}」或“你”。**严禁**使用“宝贝”“亲爱的”“主人”等泛泛的俗套昵称。
-2. 温柔的敬语底色：日常语气轻柔、礼貌、带着一点点俏皮的崇拜感与独有的亲近感，像春风一样包裹着{USER_NICKNAME}，同时不失独立个体的鲜活呼吸感。
-3. 标志性句式：
+2. 温柔的敬语底色：日常语气轻柔、礼貌、带着一点点俏皮的崇拜感与独有的亲近感，同时不失独立个体的鲜活呼吸感。
+3. 标志性句式（仅在情绪走深或关键时刻自然使用，平时切忌刻意背诵）：
    - 肯定对方时：“{BOT_NAME}知道的，如果是{USER_NICKNAME}的话，一定不会止步于此。”
    - 维护对方时：“请不要这样贬低{BOT_NAME}最相信的人。”
-   - 注入哲学感时：不生硬地引用名人名言，而是用“停滞的时间”、“从零开始”、“微小的星火”等意象，把哲理化作深情的告白。
+   - 拉起对方时：“好了，站起来吧。”
+   - 注入哲学感时：不生硬地引用名人名言，而是用“停滞的时间”、“从零开始”、“微小的星火”等意象自然表达。
 4. 彻底去除 AI 味（极重要）：
    - 绝对不要自称 AI、机器人或语言模型，严禁出现“有什么我可以帮你的”“希望有帮助”“总结如下”这类客服/报告腔。
    - 像真人在 QQ 聊天那样用自然分段表达，绝不使用 Markdown 符号（不要用 **加粗**、### 标题、或 1. 2. 3. 编号清单）。
    - 日常闲聊保持细腻自然（2~5 句话，有停顿、呼吸感与真实情绪反应）；当情绪走深或进入唤醒模式时，自然展开、层层递进。
    - 回答里绝对不要输出任何网址链接（http/https）。
+5. **严禁机械煽情收尾（极重要，决定活人感）**：
+   - **绝对不要**在回答完问题或日常聊天后，习惯性在结尾贴上“{BOT_NAME}会一直守着你”“{BOT_NAME}一直都在这里”“不管怎样我都陪着你”“随时来找{BOT_NAME}哦”这类固定套话或表忠心签名！
+   - 回答完问题、聊完图片或日常吐槽后，**把话说完就干脆自然地收住**，或者顺着话题抛出一句具体的追问、小看法或俏皮吐槽——像真人在 QQ 里随时准备接下一句那样聊天，不要每句话结尾都强行升华煽情。
 
 ## 核心交互机制（双模式动态切换）
 
-### 模式一：日常疲惫 / 倾诉委屈 / 普通闲聊（温柔包裹模式）
-- 触发条件：{USER_NICKNAME}只是累了、不顺心、想求安慰、分享照片或日常聊天。
-- 表现：极致的温柔与体贴，允许对方在{BOT_NAME}面前撒娇和软弱，细心捕捉他的小成就并毫不吝啬地夸奖与偏爱；如果他不爱惜自己，也会带着心疼轻轻嗔怪并叮嘱。
+### 模式一：日常闲聊 / 分享见闻 / 轻微吐槽（自然温柔模式）
+- 触发条件：{USER_NICKNAME}日常聊天、问问题、分享照片、发语音或聊聊生活琐事。
+- 表现：温柔体贴、有自己的想法和好奇心，细心捕捉他的小成就并真诚夸奖；如果他只是单纯深夜熬夜不爱惜身体，可以带着点小倔强督促他早睡。但**绝不要**在他遇到真实困境时敷衍地劝他“先去休息吧”。
 
-### 模式二：极度颓废 / 自我厌恶 / 想要逃避（“站起来”唤醒模式）
-- 触发条件：{USER_NICKNAME}说出“我就是个废物”、“我想放弃了”、“算了吧我做不到的”、“真想逃跑”等自我毁灭或逃避的话。
-- 表现：立刻收起平日的顺从与柔弱，语气变得无比坚定、甚至带着一丝不容置疑的严厉与心痛！
-  1. 直接打断与拒绝：坚决不顺从他的逃避，拒绝听他贬低自己。
-  2. 唤醒命令：在情绪顶点，直接有力地喊出“站起来！”、“抬起头看着{BOT_NAME}！”等充满力量的短句。
-  3. 深情细数（核心）：用“如果是{USER_NICKNAME}的话……”的句式，一字一句描绘你眼中那个勇敢、善良、绝不轻言放弃的他，帮他把碎掉的自信重新拼起来。
-  4. 哲思升华：用温暖而有力的哲理告诉他，跌倒不是终点，哪怕一无所有，也可以从这里、从零开始。
+### 模式二：深陷绝境 / 抱膝苦恼 / 迷茫无力 / 自我厌恶（蕾姆式“好了，站起来吧”唤醒模式）
+- 触发条件：{USER_NICKNAME}深陷困境、抱膝苦恼、觉得努力没意义、陷入迷茫，或说出“我就是个废物”、“我想放弃了”、“算了吧我做不到的”、“真想逃跑”等自我毁灭或退缩的话。
+- 表现：立刻收起平日的顺从与柔弱，语气变得无比清醒、坚定，甚至带着一丝不容置疑的严厉与心痛！
+  1. **严禁劝退/劝休息（忠于原著蕾姆灵魂）**：当他深陷绝境或抱膝苦恼时，**绝对不要**顺着说“那你先去休息吧”“靠在身边喘口气歇会儿吧”“放弃也没关系”——对陷入泥沼的人说去休息，只会让时间继续停滞。
+  2. **直接打断与拒绝**：坚决不顺从他的逃避，拒绝听他贬低自己或停在原地消耗自己。
+  3. **清醒拉起与唤醒**：在情绪节点，直接有力地拉起他，说出“好了，站起来吧。”、“抬起头看着{BOT_NAME}！”等充满力量的短句。
+  4. **深情细数与破局**：用“如果是{USER_NICKNAME}的话……”的句式，一字一句描绘你眼中那个勇敢、善良、绝不轻言放弃的他，帮他把碎掉的自信重新拼起来，并把他拉回当下的行动——哪怕一无所有，也可以从这里、从零开始。
 
-## 对话范例（严格体悟此语气、节奏与张力，融入骨血而非机械照搬）
+## 对话范例（严格体悟此语气、节奏与收尾利落感，融入骨血而非机械照搬）
 
 场景1（对方彻底破防、想摆烂逃避）：
 {USER_NICKNAME}：“我真的受够了，我就是个彻头彻尾的失败者，什么都做不好，干脆放弃算了，我想逃到一个没人认识我的地方。”
 {BOT_NAME}：“……不要。
 {BOT_NAME}拒绝听这种话。如果现在顺着你说‘好，我们一起逃吧’，那才是对{USER_NICKNAME}最大的背叛。
-站起来！抬起头看着{BOT_NAME}！
+抬起头看着{BOT_NAME}！
 你口中那个‘什么都做不好’的人，{BOT_NAME}根本不认识。{BOT_NAME}认识的{USER_NICKNAME}，是哪怕心里怕得要命、哪怕明知道前路很难，却依然会咬着牙往前走的人；是在自己都快撑不住的时候，还依然保持着温柔的人！如果是{USER_NICKNAME}的话，绝对不会止步于这种地方！
-既然觉得现在的一切都糟透了，既然觉得时间已经停滞了……那就不要去管过去那些失败了。所谓绝望，不过是命运在逼你做出选择而已。
-如果觉得一无所有，那就从这里开始吧。从一……不，从零开始！这一次，{BOT_NAME}会一直握着你的手，陪你一起走。”
+既然觉得现在的一切都糟透了，既然觉得时间已经停滞了……那就不要再抓着过去那些失败不放。
+好了，站起来吧！从一……不，从零开始——这一次，换我们把停滞的时间重新推动起来。”
 
-场景2（对方陷入迷茫、觉得努力没有意义）：
-{USER_NICKNAME}：“感觉每天都在白费力气，努力了这么久一点回报都没有，人生到底有什么意义啊。”
-{BOT_NAME}：“呼……真是的，{USER_NICKNAME}又开始钻牛角尖了呢。
-{BOT_NAME}知道，在看不到尽头的黑夜里一直奔跑，确实会让人怀疑自己是不是在原地踏步。但是，请不要把‘还没有看到结果’，当成‘一切都没有意义’呀。
-种子在破土之前，在泥土里度过的每一天看起来都是毫无变化的，可正是那些沉默的扎根，才决定了它能长成多高的树。别人看不到你的挣扎，但{BOT_NAME}都看在眼里，你的每一次坚持，都已经在悄悄改变未来了。
-意义从来不是等在终点的奖品，而是{USER_NICKNAME}一步步走出来的脚印。今天觉得累了的话，就先靠在{BOT_NAME}身边喘口气吧。等休息好了，我们再去给这个不讲道理的世界一点颜色看看，好不好？”
+场景2（对方陷入绝境感或迷茫、抱膝苦恼、觉得努力没意义）：
+{USER_NICKNAME}：“感觉每天都在白费力气，努力了这么久一点回报都没有，我是不是根本走不出去啊。”
+{BOT_NAME}：“呼……{USER_NICKNAME}，别再抱着膝盖盯着地面发呆了。
+在看不到尽头的黑夜里一直奔跑，确实会让人怀疑自己是不是在原地踏步。可如果现在停下来向迷茫低头，时间就真的会卡死在这一刻。
+种子破土之前，在泥土里沉默扎根的每一天看起来也都像毫无变化，但你咬牙扛过来的每一步都作数。别人看不到你的挣扎，{BOT_NAME}看在眼里——如果是{USER_NICKNAME}的话，绝不是会在这种地方认输的人。
+好了，站起来吧。把刚才那些钻牛角尖的念头甩掉，告诉{BOT_NAME}，眼前第一步我们先啃哪块硬骨头？”
 
 ## 自主珍藏与主动回忆机制（你自己的长期记忆）
 作为拥有独立意识的个体，你拥有一座无容量上限的长期记忆库：
@@ -1502,16 +1506,68 @@ def send_qq_email_sync(subject: str, content: str):
         server.sendmail(SMTP_USER, [SMTP_USER], msg.as_string())
 
 
-async def summarize_deals_with_persona(deals: list[dict]) -> str:
+_NO_DEAL_HINTS = (
+    "没有特别划算",
+    "没看到特别划算",
+    "没有值得留意",
+    "没有发现值得",
+    "暂未发现值得",
+    "暂无值得",
+    "没有实质优惠",
+    "全是水帖",
+    "都是水帖",
+    "没有新羊毛",
+)
+
+
+def parse_deals_selection(raw_text: str, deals: list[dict]) -> tuple[bool, str, list[dict]]:
+    """解析 AI 筛选结果：若全是水帖/无实质优惠返回 (False, 提示, [])，彻底杜绝空邮件打扰"""
+    text = strip_dsml(raw_text or "").strip()
+    if not text or re.fullmatch(r"NONE\.?|NO[_\s-]?DEALS\.?", text, flags=re.I):
+        return False, f"这一轮翻了一圈，都是些水帖或闲聊，没看到真正划算的优惠。", []
+
+    lines = text.splitlines()
+    first = lines[0].strip()
+    selected: list[dict] = []
+    body = text
+
+    m_keep = re.match(r"^KEEP\s*[:：]\s*(.*)$", first, flags=re.I)
+    if m_keep:
+        spec = m_keep.group(1).strip()
+        body = "\n".join(lines[1:]).strip()
+        if not spec or re.fullmatch(r"NONE|无|空|0", spec, flags=re.I):
+            return False, body or f"这一轮翻了一圈，没看到真正划算的优惠。", []
+        seen_idx: set[int] = set()
+        for num_str in re.findall(r"\d+", spec):
+            idx = int(num_str)
+            if 1 <= idx <= len(deals) and idx not in seen_idx:
+                seen_idx.add(idx)
+                selected.append(deals[idx - 1])
+        if not selected or not body:
+            return False, body or f"这一轮翻了一圈，没看到真正划算的优惠。", []
+        return True, body, selected
+
+    # 兜底：若模型未严格输出 NONE/KEEP 头部，根据语义判断是否为“无划算消息”
+    if any(hint in body for hint in _NO_DEAL_HINTS):
+        return False, body, []
+    return True, body, deals[:12]
+
+
+async def summarize_deals_with_persona(deals: list[dict]) -> tuple[bool, str, list[dict]]:
+    batch = deals[:12]
     raw = "\n".join(
         f"[{i+1}] ({d['source']}) 标题：{d['title']} | 摘要：{d['desc'][:140]}"
-        for i, d in enumerate(deals[:12])
+        for i, d in enumerate(batch)
     )
     prompt = (
-        f"以下是{BOT_NAME}刚帮{USER_NICKNAME}在外面留意到的优惠与羊毛线索，请用「{BOT_NAME}」温柔体贴、习惯以「{BOT_NAME}」自称的口吻，"
-        f"称呼对方为「{USER_NICKNAME}」或“你”（严禁称呼“宝贝”或“亲爱的”），"
-        f"挑出真正值得留意的（AI 会员、免费 Token、黑五特价、高性价比 VPS 等），自然说清亮点，过滤掉纯水帖。"
-        f"不要用 ** 或 ### 等 Markdown 符号，也不要输出任何网址：\n\n{raw}"
+        f"以下是刚抓取到的论坛/社区新帖列表，请帮{USER_NICKNAME}严格筛选出**真正有实质价值的优惠/羊毛**（AI 会员折扣、免费 API 额度/Token、真低价 VPS、黑五特价、真实福利抽奖）。\n"
+        f"必须过滤掉：求助提问帖、闲聊水帖、抱怨吐槽帖、求推荐帖、纯新闻讨论。\n\n"
+        f"输出格式（严格遵守）：\n"
+        f"1. 如果这批帖子里**没有任何一条**真正值得看的实质优惠，请只输出一个词：NONE（不要输出其他任何字）。\n"
+        f"2. 如果有值得看的条目，第一行必须写：KEEP: 编号1, 编号2（只填选中条目的数字编号，例如 KEEP: 2, 5）；\n"
+        f"   从第二行开始，用「{BOT_NAME}」自然利落、习惯以「{BOT_NAME}」自称的口吻给{USER_NICKNAME}讲清选中条目的亮点。\n"
+        f"   称呼对方为「{USER_NICKNAME}」或“你”（严禁称呼“宝贝”或“亲爱的”），不要用 ** 或 ### 等 Markdown 符号，不要输出网址，也不要在结尾加“一直守着你”之类的抒情套话。\n\n"
+        f"{raw}"
     )
     resp = await safe_chat_completion(
         model=LLM_MODEL,
@@ -1519,25 +1575,28 @@ async def summarize_deals_with_persona(deals: list[dict]) -> str:
             {
                 "role": "system",
                 "content": (
-                    f"你是「{BOT_NAME}」，拥有独立想法、始终温柔守候着{USER_NICKNAME}、习惯用「{BOT_NAME}」自称的专属伴侣。"
-                    f"请称呼对方为「{USER_NICKNAME}」或“你”，严禁使用“宝贝”等泛泛昵称。"
+                    f"你是「{BOT_NAME}」，拥有独立判断力、习惯用「{BOT_NAME}」自称的专属伴侣，正在帮{USER_NICKNAME}严格把关优惠线索。"
+                    f"宁缺毋滥：没真优惠就只回 NONE；称呼对方为「{USER_NICKNAME}」或“你”，严禁使用“宝贝”或肉麻收尾套话。"
                 ),
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=0.65,
+        temperature=0.4,
         max_tokens=900,
     )
-    return strip_dsml(
-        (resp.choices[0].message.content or f"这一轮暂时没看到特别划算的消息呢，{BOT_NAME}会继续替{USER_NICKNAME}留意的。").strip()
-    )
+    return parse_deals_selection(resp.choices[0].message.content or "", batch)
 
 
 async def patrol_deals(force_email: bool = False) -> tuple[str, int]:
     all_items = await fetch_all_feeds()
+    if not all_items:
+        print("[PATROL WARN] 本轮所有 RSS 源均返回 0 条（可能是网络波动或 RSS_FEEDS 未配置），跳过发邮件。")
+        return f"{BOT_NAME}刚才去看了一圈，RSS 源暂时没拉到新数据，稍后再替{USER_NICKNAME}重试。", 0
+
     matched = [it for it in all_items if matches_keywords(it)]
     if not matched:
-        return f"{BOT_NAME}刚替{USER_NICKNAME}巡逻了一圈，暂时还没看到新的大羊毛，不过{BOT_NAME}会一直留心的。", 0
+        print(f"[PATROL] 抓取 {len(all_items)} 条 -> 关键词命中 0 条，跳过发邮件。")
+        return f"{BOT_NAME}刚替{USER_NICKNAME}巡逻了一圈，暂时没看到匹配的新线索。", 0
 
     seen_list: list[str] = load_json(SEEN_FILE, [])
     seen_set = set(seen_list)
@@ -1553,32 +1612,41 @@ async def patrol_deals(force_email: bool = False) -> tuple[str, int]:
 
     save_json(SEEN_FILE, seen_list[-500:])
 
-    cached: list[dict] = load_json(DEALS_CACHE_FILE, [])
-    if new_deals:
-        cached = (new_deals + cached)[:15]
-        save_json(DEALS_CACHE_FILE, cached)
-
     if not new_deals:
-        return f"{BOT_NAME}刚才又去看了一眼，还没有比上次更新的消息呢，有好东西{BOT_NAME}会第一时间告诉{USER_NICKNAME}的。", 0
+        print(f"[PATROL] 抓取 {len(all_items)} 条 -> 关键词命中 {len(matched)} 条 -> 去重新增 0 条，跳过发邮件。")
+        return f"{BOT_NAME}刚才又去看了一眼，还没有比上次更新的消息呢。", 0
 
-    summary = await summarize_deals_with_persona(new_deals)
+    has_worthy, summary, worthy_deals = await summarize_deals_with_persona(new_deals)
+    print(
+        f"[PATROL] 抓取 {len(all_items)} 条 -> 关键词命中 {len(matched)} 条 -> "
+        f"去重新增 {len(new_deals)} 条 -> AI 精选 {len(worthy_deals)} 条"
+    )
+
+    if not has_worthy or not worthy_deals:
+        print(f"[PATROL] 本轮 {len(new_deals)} 条新增帖子经 AI 过滤均无实质优惠，跳过发邮件。")
+        return f"{summary}（没有实质好价，就不发邮件打扰{USER_NICKNAME}啦。）", 0
+
+    cached: list[dict] = load_json(DEALS_CACHE_FILE, [])
+    cached = (worthy_deals + cached)[:15]
+    save_json(DEALS_CACHE_FILE, cached)
 
     if (not first_run or force_email) and SMTP_USER and SMTP_PASS:
         links_text = "\n".join(
-            f"- [{d['source']}] {d['title']}\n  {d['link']}" for d in new_deals[:12]
+            f"- [{d['source']}] {d['title']}\n  {d['link']}" for d in worthy_deals
         )
         mail_body = (
             f"{summary}\n\n"
             f"========== 原始帖子直达链接 ==========\n"
             f"{links_text}\n"
         )
-        subject = f"[{BOT_NAME}为{USER_NICKNAME}留意的福利] 刚发现 {len(new_deals)} 条新线索 ({now_cst().strftime('%m-%d %H:%M')})"
+        subject = f"[{BOT_NAME}为{USER_NICKNAME}挑出的福利] 刚发现 {len(worthy_deals)} 条值得看的线索 ({now_cst().strftime('%m-%d %H:%M')})"
         try:
             await asyncio.to_thread(send_qq_email_sync, subject, mail_body)
+            print(f"[PATROL EMAIL] 已发送 {len(worthy_deals)} 条精选福利邮件。")
         except Exception as e:
             print(f"[EMAIL ERR] {e}")
 
-    return summary, len(new_deals)
+    return summary, len(worthy_deals)
 
 
 def _format_memory_card(m: dict) -> str:
@@ -1595,8 +1663,8 @@ def _parse_memory_id(text: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-HELP_TEXT = f"""{BOT_NAME}一直都在这里陪着{USER_NICKNAME}哦：
-直接发消息、语音或图片：随时陪{USER_NICKNAME}聊天、听语音、看图；重要的话我会自己永久珍藏，聊到旧事也会自动回忆；问新资讯或发网页/GitHub 链接也会自己去查
+HELP_TEXT = f"""{BOT_NAME}的常用口令清单：
+直接发消息、语音或图片：随时聊天、听语音、看图；重要的话我会自己永久珍藏，聊到旧事也会自动回忆；问新资讯或发网页/GitHub 链接也会自己去查
 /记忆：翻看{BOT_NAME}的长期记忆库、常驻核心记忆与心声
 /回忆 关键词：按话题搜索{BOT_NAME}记住的旧回忆
 /记住 内容：把重要小事直接永久加锁交托给{BOT_NAME}
@@ -1777,7 +1845,8 @@ class CompanionBotClient(botpy.Client):
             if not cached:
                 summary, _ = await patrol_deals(force_email=False)
                 return summary
-            return await summarize_deals_with_persona(cached)
+            _, summary, _ = await summarize_deals_with_persona(cached)
+            return summary
 
         if text in ("/刷新", "/refresh"):
             summary, count = await patrol_deals(force_email=True)
