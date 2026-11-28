@@ -707,7 +707,7 @@
         badge: "DELETE",
         src: "memory_rag.py",
         srcLabel: "memory_rag.py · delete_memory",
-        explain: "按编号精准删除指定记忆，并由 SQLite 触发器同步清理 FTS5 倒排索引，不留脏数据。",
+        explain: "按编号精准删除指定记忆，并同步清理 SQLite FTS5 倒排索引，不留脏数据。",
         user: "/忘掉 3",
         reply: "好，记忆 #3 已经彻底从记忆库和 FTS5 索引里删掉了，不再保留。"
       },
@@ -735,13 +735,13 @@
       },
       {
         id: "reset",
-        cmd: "/重置",
-        copy: "/重置",
+        cmd: "/清空",
+        copy: "/清空",
         badge: "SESSION",
         src: "bot.py",
-        srcLabel: "bot.py · cmd_reset",
-        explain: "清空当前短期对话上下文窗口（开启全新话题或节省 Token），SQLite 里的全部长期记忆完好无损。",
-        user: "/重置",
+        srcLabel: "bot.py · cmd_clear",
+        explain: "清空当前短期对话上下文窗口（同时兼容 /重置、/clear 别名），SQLite 里的全部长期记忆完好无损。",
+        user: "/清空",
         reply: "短期对话上下文已清空（0 轮）。\n放心，SQLite 长期记忆库里的 3 条记忆全部完好留着，我们聊新的吧。"
       }
     ],
@@ -797,7 +797,7 @@
         badge: "DELETE",
         src: "memory_rag.py",
         srcLabel: "memory_rag.py · delete_memory",
-        explain: "Deletes a single memory by ID and synchronizes the FTS5 virtual table via SQLite triggers with zero leftover fragments.",
+        explain: "Deletes a single memory by ID and synchronizes deletion from the FTS5 virtual table with zero leftover fragments.",
         user: "/忘掉 3",
         reply: "Done—memory #3 has been removed from both the table and the FTS5 index."
       },
@@ -825,13 +825,13 @@
       },
       {
         id: "reset",
-        cmd: "/重置",
-        copy: "/重置",
+        cmd: "/清空",
+        copy: "/清空",
         badge: "SESSION",
         src: "bot.py",
-        srcLabel: "bot.py · cmd_reset",
-        explain: "Clears only the short-term conversation buffer to start fresh or cut tokens—every long-term SQLite memory stays intact.",
-        user: "/重置",
+        srcLabel: "bot.py · cmd_clear",
+        explain: "Clears only the short-term conversation buffer (also supports /重置 and /clear aliases)—every long-term SQLite memory stays intact.",
+        user: "/清空",
         reply: "Short-term chat context cleared (0 turns).\nAll 3 long-term memories in SQLite remain untouched—what's on your mind?"
       }
     ]

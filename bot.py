@@ -57,9 +57,20 @@ BOT_NAME = os.getenv("BOT_NAME", "Una").strip() or "Una"
 USER_NICKNAME = os.getenv("USER_NICKNAME", "你").strip() or "你"
 EXTRA_PERSONA = os.getenv("EXTRA_PERSONA", "").strip()
 
+def _env_int(name: str, default: int, minimum: int) -> int:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return max(minimum, default)
+    try:
+        return max(minimum, int(raw))
+    except ValueError:
+        print(f"[CONFIG WARN] 环境变量 {name}={raw!r} 不是有效整数，已回退默认值 {default}")
+        return max(minimum, default)
+
+
 RSS_FEEDS = [u.strip() for u in os.getenv("RSS_FEEDS", "").split(",") if u.strip()]
 DEAL_KEYWORDS = [k.strip().lower() for k in os.getenv("DEAL_KEYWORDS", "").split(",") if k.strip()]
-CHECK_INTERVAL_MIN = max(10, int(os.getenv("CHECK_INTERVAL_MIN", "180")))
+CHECK_INTERVAL_MIN = _env_int("CHECK_INTERVAL_MIN", 180, 10)
 
 SMTP_USER = os.getenv("SMTP_USER", "").strip()
 SMTP_PASS = os.getenv("SMTP_PASS", "").strip()
@@ -86,8 +97,8 @@ MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_VOICES_PER_MSG = 2
 MAX_AUDIO_BYTES = 8 * 1024 * 1024
 
-API_MAX_CALLS_PER_MIN = max(5, int(os.getenv("API_MAX_CALLS_PER_MIN", "20")))
-API_MAX_CALLS_PER_DAY = max(50, int(os.getenv("API_MAX_CALLS_PER_DAY", "300")))
+API_MAX_CALLS_PER_MIN = _env_int("API_MAX_CALLS_PER_MIN", 20, 5)
+API_MAX_CALLS_PER_DAY = _env_int("API_MAX_CALLS_PER_DAY", 300, 50)
 API_ERR_BREAKER_THRESHOLD = 5
 API_ERR_BREAKER_COOLDOWN_SEC = 120
 LLM_MAX_TOKENS = 1200
@@ -313,7 +324,10 @@ def load_json(path: Path, default):
 
 
 def save_json(path: Path, data):
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp_path, path)
 
 
 # memory.json 仅继续维护短期滑动窗口 history（以及早期旧 diary 的只读归档），所有长期记忆统一在 SQLite
@@ -863,14 +877,15 @@ async def read_url(url: str) -> str:
             follow_redirects=True,
             headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/126.0 Safari/537.36"},
         ) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            text = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\1>", " ", r.text)
-            text = re.sub(r"<[^>]+>", " ", html.unescape(text))
-            text = " ".join(text.split())[:6000]
-            if text:
-                print(f"[READ:Direct] {url} -> {len(text)} chars")
-                return f"【网页纯文本】\n{text}"
+            raw_bytes = await _stream_download_bytes(client, url, max_bytes=2 * 1024 * 1024)
+            if raw_bytes:
+                raw_html = raw_bytes.decode("utf-8", errors="replace")
+                text = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\1>", " ", raw_html)
+                text = re.sub(r"<[^>]+>", " ", html.unescape(text))
+                text = " ".join(text.split())[:6000]
+                if text:
+                    print(f"[READ:Direct] {url} -> {len(text)} chars")
+                    return f"【网页纯文本】\n{text}"
     except Exception as e:
         print(f"[READ:Direct ERR] {e}")
 
@@ -1610,13 +1625,12 @@ async def patrol_deals(force_email: bool = False) -> tuple[str, int]:
             seen_list.append(key)
             new_deals.append(it)
 
-    save_json(SEEN_FILE, seen_list[-500:])
-
     if not new_deals:
         print(f"[PATROL] 抓取 {len(all_items)} 条 -> 关键词命中 {len(matched)} 条 -> 去重新增 0 条，跳过发邮件。")
         return f"{BOT_NAME}刚才又去看了一眼，还没有比上次更新的消息呢。", 0
 
     has_worthy, summary, worthy_deals = await summarize_deals_with_persona(new_deals)
+    save_json(SEEN_FILE, seen_list[-500:])
     print(
         f"[PATROL] 抓取 {len(all_items)} 条 -> 关键词命中 {len(matched)} 条 -> "
         f"去重新增 {len(new_deals)} 条 -> AI 精选 {len(worthy_deals)} 条"
@@ -1746,7 +1760,7 @@ class CompanionBotClient(botpy.Client):
         if not text or text in ("/help", "/帮助", "帮助"):
             return HELP_TEXT
 
-        if text in ("/清空", "/clear"):
+        if text in ("/清空", "/重置", "/clear", "/reset"):
             memory_store["history"].pop(user_id, None)
             save_json(MEMORY_FILE, memory_store)
             return f"嗯，{BOT_NAME}把刚才这段对话先轻轻合上啦。不过记忆库里关于{USER_NICKNAME}的一切，{BOT_NAME}一点都不会忘的。"
@@ -1878,9 +1892,11 @@ class CompanionBotClient(botpy.Client):
                 failed_voices=failed_voices,
             )
         except ApiGuardBlocked as e:
+            print(f"[CHAT GUARD] {e}")
             reply = f"{USER_NICKNAME}，{BOT_NAME}刚刚触发了防空转保护（{e}），稍等一会再叫{BOT_NAME}好不好？"
         except Exception as e:
-            reply = f"抱歉，{USER_NICKNAME}……{BOT_NAME}刚刚好像有点恍神了（{e}），可以再对{BOT_NAME}说一遍吗？"
+            print(f"[CHAT ERR] {type(e).__name__}: {e}")
+            reply = f"抱歉，{USER_NICKNAME}……{BOT_NAME}刚刚好像有点恍神了（{type(e).__name__}），可以再对{BOT_NAME}说一遍吗？"
         finally:
             if msg_id:
                 RAW_ATTACHMENTS_CACHE.pop(msg_id, None)

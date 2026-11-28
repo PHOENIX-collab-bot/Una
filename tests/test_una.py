@@ -359,6 +359,72 @@ class TestBotCoreAndSafety(unittest.TestCase):
             self.assertIn("好了，站起来吧", sys_prompt)
             self.assertNotIn("靠在Una身边喘口气", sys_prompt)
 
+    def test_hardening_atomic_json_env_reset_and_patrol_retry(self):
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = pathlib.Path(td) / "hardened"
+            ns = _load_bot_namespace(data_dir)
+
+            # Direct _env_int test with empty / invalid / missing env vars
+            os.environ["TEST_ENV_EMPTY"] = ""
+            os.environ["TEST_ENV_BAD"] = "abc"
+            try:
+                self.assertEqual(ns["_env_int"]("TEST_ENV_EMPTY", 180, 10), 180)
+                self.assertEqual(ns["_env_int"]("TEST_ENV_BAD", 20, 5), 20)
+                self.assertEqual(ns["_env_int"]("TEST_ENV_MISSING", 300, 50), 300)
+            finally:
+                os.environ.pop("TEST_ENV_EMPTY", None)
+                os.environ.pop("TEST_ENV_BAD", None)
+
+            # Atomic save_json: valid content and zero *.tmp residue
+            target_json = data_dir / "nested" / "sample.json"
+            ns["save_json"](target_json, {"ok": True, "items": ["Una"]})
+            self.assertEqual(ns["load_json"](target_json, {}), {"ok": True, "items": ["Una"]})
+            self.assertEqual(list(target_json.parent.glob("*.tmp")), [])
+
+            # /清空 and /重置 both clear short-term history while preserving SQLite memories
+            ns["memory_rag"].save_memory("u_clear", "喜欢喝冰美式", importance=5, category="偏好与习惯", feeling="记住啦")
+            ns["save_turn"]("u_clear", "hi", "hello")
+            self.assertEqual(len(ns["memory_store"]["history"]["u_clear"]), 2)
+
+            bot_client = ns["CompanionBotClient"]()
+
+            async def run_clear_and_patrol():
+                await bot_client.handle_message("u_clear", "/清空")
+                self.assertNotIn("u_clear", ns["memory_store"]["history"])
+                self.assertEqual(ns["memory_rag"].count_memories("u_clear"), 1)
+
+                ns["save_turn"]("u_clear", "hi2", "hello2")
+                await bot_client.handle_message("u_clear", "/重置")
+                self.assertNotIn("u_clear", ns["memory_store"]["history"])
+                self.assertEqual(ns["memory_rag"].count_memories("u_clear"), 1)
+
+                # patrol_deals: AI failure must NOT persist seen_deals.json
+                deal_link = "https://example.test/deal-black-friday"
+                ns["DEAL_KEYWORDS"] = ["vps"]
+
+                async def fake_feeds():
+                    return [{"source": "test", "title": "Black Friday VPS", "link": deal_link, "desc": "cheap vps"}]
+
+                async def fake_sum_err(deals):
+                    raise RuntimeError("boom")
+
+                ns["fetch_all_feeds"] = fake_feeds
+                ns["summarize_deals_with_persona"] = fake_sum_err
+                with self.assertRaises(RuntimeError):
+                    await ns["patrol_deals"]()
+                self.assertFalse(ns["SEEN_FILE"].exists())
+
+                async def fake_sum_ok(deals):
+                    return False, "全是水帖", []
+
+                ns["summarize_deals_with_persona"] = fake_sum_ok
+                _, cnt = await ns["patrol_deals"]()
+                self.assertEqual(cnt, 0)
+                self.assertTrue(ns["SEEN_FILE"].exists())
+                self.assertIn(deal_link, ns["load_json"](ns["SEEN_FILE"], []))
+
+            asyncio.run(run_clear_and_patrol())
+
 
 if __name__ == "__main__":
     unittest.main()

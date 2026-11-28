@@ -52,7 +52,7 @@ all = ["pilk", "ddgs"]
 una-bot = "bot:main"
 
 [project.urls]
-Homepage = "https://github.com/PHOENIX-collab-bot/Una"
+Homepage = "https://myuna.ggff.net"
 Repository = "https://github.com/PHOENIX-collab-bot/Una"
 Issues = "https://github.com/PHOENIX-collab-bot/Una/issues"
 Documentation = "https://github.com/PHOENIX-collab-bot/Una/blob/main/docs/DEPLOYMENT.md"

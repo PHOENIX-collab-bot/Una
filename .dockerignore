@@ -6,6 +6,7 @@
 data/
 docs/
 tests/
+web/
 venv/
 .venv/
 __pycache__/
